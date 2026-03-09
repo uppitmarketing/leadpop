@@ -1,2 +1,278 @@
 # leadpop
 Konfigurerbar lead gen popup for GTM — brukes på tvers av kunder via window.LeadPopConfig
+(function() {
+  'use strict';
+
+  // ================================================
+  // CONFIG — settes via window.LeadPopConfig i GTM
+  // ================================================
+  var cfg = window.LeadPopConfig || {};
+
+  var config = {
+    sheetsUrl:    cfg.sheetsUrl    || '',
+    notifyEmail:  cfg.notifyEmail  || '',
+    heading:      cfg.heading      || 'Ta kontakt med oss',
+    subtext:      cfg.subtext      || 'Fyll ut skjemaet så tar vi kontakt med deg.',
+    buttonText:   cfg.buttonText   || 'Send forespørsel',
+    fields:       cfg.fields       || ['name', 'company', 'phone', 'email'],
+    primaryColor: cfg.primaryColor || '#d0021b',
+    bgColor:      cfg.bgColor      || '#2e3440',
+    cookieDays:   cfg.cookieDays   != null ? cfg.cookieDays : 7,
+    label:        cfg.label        || 'Ta kontakt',
+    successTitle: cfg.successTitle || 'Takk for din henvendelse',
+    successText:  cfg.successText  || 'Vi tar kontakt med deg innen kort tid.',
+    zIndex:       cfg.zIndex       || 999999
+  };
+
+  // Felt-konfig
+  var FIELD_DEFS = {
+    name:    { placeholder: 'Navn',    type: 'text',  autocomplete: 'name',         required: true },
+    company: { placeholder: 'Bedrift', type: 'text',  autocomplete: 'organization', required: false },
+    phone:   { placeholder: 'Telefon', type: 'tel',   autocomplete: 'tel',          required: false },
+    email:   { placeholder: 'E-post',  type: 'email', autocomplete: 'email',        required: true }
+  };
+
+  // ================================================
+  // COOKIE HELPERS
+  // ================================================
+  var COOKIE_KEY = 'leadpop_seen_' + btoa(window.location.hostname).replace(/=/g,'');
+
+  function hasSeen() {
+    return document.cookie.split(';').some(function(c) {
+      return c.trim().indexOf(COOKIE_KEY + '=') === 0;
+    });
+  }
+
+  function setSeen() {
+    if (config.cookieDays === 0) return;
+    var exp = new Date();
+    exp.setTime(exp.getTime() + config.cookieDays * 24 * 60 * 60 * 1000);
+    document.cookie = COOKIE_KEY + '=1; expires=' + exp.toUTCString() + '; path=/';
+  }
+
+  // ================================================
+  // STYLES
+  // ================================================
+  function injectStyles() {
+    if (document.getElementById('leadpop-styles')) return;
+    var bg      = config.bgColor;
+    var primary = config.primaryColor;
+    var inputBg = shadeColor(bg, -15);
+    var border  = shadeColor(bg, 20);
+
+    var css = [
+      '#leadpop-overlay{display:none;position:fixed;inset:0;background:rgba(10,14,20,.82);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:' + config.zIndex + ';align-items:center;justify-content:center;padding:20px;box-sizing:border-box}',
+      '#leadpop-overlay.lp-active{display:flex;animation:lp-fadein .35s ease}',
+      '@keyframes lp-fadein{from{opacity:0}to{opacity:1}}',
+      '.leadpop-box{background:' + bg + ';border:1px solid ' + border + ';border-top:3px solid ' + primary + ';border-radius:0;max-width:500px;width:100%;position:relative;box-shadow:0 30px 80px rgba(0,0,0,.7);animation:lp-slideup .4s cubic-bezier(.16,1,.3,1);overflow:hidden}',
+      '@keyframes lp-slideup{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}',
+      '.leadpop-inner{padding:44px 44px 40px}',
+      '.leadpop-close{position:absolute;top:16px;right:16px;background:transparent;border:1px solid ' + border + ';color:#888;font-size:18px;line-height:1;cursor:pointer;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:0;transition:all .2s;font-family:sans-serif}',
+      '.leadpop-close:hover{border-color:' + primary + ';color:#fff;background:rgba(208,2,27,.1)}',
+      '.leadpop-label{font-family:Montserrat,Arial,sans-serif;font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:' + primary + ';margin-bottom:16px}',
+      '.leadpop-heading{font-family:Montserrat,Arial,sans-serif;font-size:26px;font-weight:800;text-transform:uppercase;letter-spacing:.01em;color:#fff;line-height:1.1;margin-bottom:10px}',
+      '.leadpop-sub{font-family:Montserrat,Arial,sans-serif;font-size:13px;color:#8a9099;line-height:1.6;margin-bottom:28px}',
+      '.leadpop-sub strong{color:#c0c8d4;font-weight:600}',
+      '.leadpop-field{margin-bottom:12px}',
+      '.leadpop-input{width:100%;background:' + inputBg + ';border:1px solid ' + border + ';border-radius:0;color:#e8ecf0;font-family:Montserrat,Arial,sans-serif;font-size:13px;padding:12px 16px;box-sizing:border-box;outline:none;transition:border-color .2s;-webkit-appearance:none}',
+      '.leadpop-input::placeholder{color:#4a5260}',
+      '.leadpop-input:focus{border-color:' + primary + '}',
+      '.leadpop-input.lp-error{border-color:' + primary + '}',
+      '.leadpop-submit{width:100%;background:' + primary + ';color:#fff;border:none;border-radius:0;font-family:Montserrat,Arial,sans-serif;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;padding:14px 24px;cursor:pointer;margin-top:8px;transition:background .2s}',
+      '.leadpop-submit:hover{filter:brightness(.88)}',
+      '.leadpop-submit:disabled{opacity:.5;cursor:not-allowed}',
+      '.leadpop-privacy{font-family:Montserrat,Arial,sans-serif;font-size:10px;color:#4a5260;margin-top:12px;line-height:1.5}',
+      '.leadpop-success{display:none;text-align:center;padding:56px 44px}',
+      '.leadpop-success.lp-active{display:block;animation:lp-fadein .4s ease}',
+      '.leadpop-success-icon{width:52px;height:52px;border:2px solid ' + primary + ';border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:20px;color:' + primary + '}',
+      '.leadpop-success h3{font-family:Montserrat,Arial,sans-serif;font-size:20px;font-weight:800;text-transform:uppercase;color:#fff;margin-bottom:10px}',
+      '.leadpop-success p{font-family:Montserrat,Arial,sans-serif;font-size:13px;color:#8a9099;line-height:1.6}',
+      '@media(max-width:600px){.leadpop-inner{padding:32px 20px 28px}.leadpop-success{padding:40px 20px}.leadpop-heading{font-size:22px}}'
+    ].join('');
+
+    var style = document.createElement('style');
+    style.id = 'leadpop-styles';
+    style.textContent = css;
+    document.head.appendChild(style);
+
+    // Last inn Montserrat hvis ikke allerede lastet
+    if (!document.querySelector('link[href*="Montserrat"]')) {
+      var link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap';
+      document.head.appendChild(link);
+    }
+  }
+
+  // Hjelpefunksjon for å gjøre farge mørkere/lysere
+  function shadeColor(hex, pct) {
+    try {
+      var num = parseInt(hex.replace('#',''), 16);
+      var r = Math.min(255, Math.max(0, (num >> 16) + pct));
+      var g = Math.min(255, Math.max(0, ((num >> 8) & 0xff) + pct));
+      var b = Math.min(255, Math.max(0, (num & 0xff) + pct));
+      return '#' + ((1<<24)|(r<<16)|(g<<8)|b).toString(16).slice(1);
+    } catch(e) {
+      return hex;
+    }
+  }
+
+  // ================================================
+  // BUILD HTML
+  // ================================================
+  function buildHTML() {
+    if (document.getElementById('leadpop-overlay')) return;
+
+    var fieldsHTML = config.fields.map(function(f) {
+      var def = FIELD_DEFS[f];
+      if (!def) return '';
+      return '<div class="leadpop-field">' +
+        '<input type="' + def.type + '" id="leadpop-field-' + f + '" class="leadpop-input" ' +
+        'placeholder="' + def.placeholder + (def.required ? ' *' : '') + '" ' +
+        'autocomplete="' + def.autocomplete + '">' +
+        '</div>';
+    }).join('');
+
+    var html = '<div id="leadpop-overlay">' +
+      '<div class="leadpop-box">' +
+        '<button class="leadpop-close" id="leadpop-close-btn" aria-label="Lukk">&#x2715;</button>' +
+        '<div id="leadpop-form-wrap">' +
+          '<div class="leadpop-inner">' +
+            '<div class="leadpop-label">' + config.label + '</div>' +
+            '<h2 class="leadpop-heading">' + config.heading + '</h2>' +
+            '<p class="leadpop-sub">' + config.subtext + '</p>' +
+            fieldsHTML +
+            '<button class="leadpop-submit" id="leadpop-submit-btn">' + config.buttonText + ' &rarr;</button>' +
+            '<p class="leadpop-privacy">Vi deler aldri informasjonen din med tredjeparter.</p>' +
+          '</div>' +
+        '</div>' +
+        '<div class="leadpop-success" id="leadpop-success">' +
+          '<div class="leadpop-success-icon">&#10003;</div>' +
+          '<h3>' + config.successTitle + '</h3>' +
+          '<p>' + config.successText + '</p>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+    var div = document.createElement('div');
+    div.innerHTML = html;
+    document.body.appendChild(div.firstChild);
+
+    // Events
+    document.getElementById('leadpop-close-btn').addEventListener('click', LeadPop.close);
+    document.getElementById('leadpop-overlay').addEventListener('click', function(e) {
+      if (e.target === this) LeadPop.close();
+    });
+    document.getElementById('leadpop-submit-btn').addEventListener('click', submitForm);
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') LeadPop.close();
+    });
+  }
+
+  // ================================================
+  // SUBMIT
+  // ================================================
+  function submitForm() {
+    var values = {};
+    var valid = true;
+
+    config.fields.forEach(function(f) {
+      var el = document.getElementById('leadpop-field-' + f);
+      if (!el) return;
+      var val = el.value.trim();
+      var def = FIELD_DEFS[f] || {};
+      el.classList.remove('lp-error');
+      if (def.required && !val) {
+        el.classList.add('lp-error');
+        valid = false;
+      }
+      values[f] = val;
+    });
+
+    if (!valid) return;
+
+    var btn = document.getElementById('leadpop-submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Sender...';
+
+    var payload = Object.assign({}, values, {
+      source:    'LeadPop',
+      page:      window.location.href,
+      timestamp: new Date().toISOString()
+    });
+
+    // Send til Google Sheets
+    if (config.sheetsUrl) {
+      fetch(config.sheetsUrl, {
+        method: 'POST',
+        mode:   'no-cors',
+        body:   new URLSearchParams(payload)
+      }).catch(function(){});
+    }
+
+    // dataLayer
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push(Object.assign({ event: 'leadpop_submitted' }, payload));
+
+    // Plausible
+    if (typeof window.plausible === 'function') {
+      window.plausible('leadpop_submitted');
+    }
+
+    // Vis success
+    document.getElementById('leadpop-form-wrap').style.display = 'none';
+    var success = document.getElementById('leadpop-success');
+    success.classList.add('lp-active');
+    setSeen();
+
+    setTimeout(function() { LeadPop.close(); }, 4000);
+  }
+
+  // ================================================
+  // PUBLIC API
+  // ================================================
+  var LeadPop = window.LeadPop = {
+    show: function() {
+      if (hasSeen()) return;
+      injectStyles();
+      buildHTML();
+      document.getElementById('leadpop-overlay').classList.add('lp-active');
+      document.body.style.overflow = 'hidden';
+      track('leadpop_shown');
+    },
+    close: function() {
+      var overlay = document.getElementById('leadpop-overlay');
+      if (overlay) overlay.classList.remove('lp-active');
+      document.body.style.overflow = '';
+      setSeen();
+      track('leadpop_closed');
+    },
+    reset: function() {
+      document.cookie = COOKIE_KEY + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
+      var overlay = document.getElementById('leadpop-overlay');
+      if (overlay) overlay.remove();
+      var styles = document.getElementById('leadpop-styles');
+      if (styles) styles.remove();
+    }
+  };
+
+  function track(event) {
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({ event: event });
+    if (typeof window.plausible === 'function') window.plausible(event);
+  }
+
+  // ================================================
+  // AUTO-INIT via GTM
+  // GTM trigger kaller LeadPop.show() direkte,
+  // eller init settes til 'auto' for standalone bruk
+  // ================================================
+  if (cfg.init === 'auto') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function() { LeadPop.show(); });
+    } else {
+      LeadPop.show();
+    }
+  }
+
+})();
