@@ -8,6 +8,9 @@
 
   var config = {
     sheetsUrl:    cfg.sheetsUrl    || '',
+    supabaseUrl:  cfg.supabaseUrl  || 'https://shurydpxamkasgsyeupe.supabase.co',
+    supabaseKey:  cfg.supabaseKey  || 'sb_publishable_8VEQPBuMuiVsrCch2ODP_Q_9gxUgulB',
+    clientId:     cfg.clientId     || window.location.hostname,
     notifyEmail:  cfg.notifyEmail  || '',
     heading:      cfg.heading      || 'Ta kontakt med oss',
     subtext:      cfg.subtext      || 'Fyll ut skjemaet så tar vi kontakt med deg.',
@@ -22,7 +25,6 @@
     zIndex:       cfg.zIndex       || 999999
   };
 
-  // Felt-konfig
   var FIELD_DEFS = {
     name:    { placeholder: 'Navn',    type: 'text',  autocomplete: 'name',         required: true },
     company: { placeholder: 'Bedrift', type: 'text',  autocomplete: 'organization', required: false },
@@ -30,9 +32,6 @@
     email:   { placeholder: 'E-post',  type: 'email', autocomplete: 'email',        required: true }
   };
 
-  // ================================================
-  // COOKIE HELPERS
-  // ================================================
   var COOKIE_KEY = 'leadpop_seen_' + btoa(window.location.hostname).replace(/=/g,'');
 
   function hasSeen() {
@@ -48,9 +47,6 @@
     document.cookie = COOKIE_KEY + '=1; expires=' + exp.toUTCString() + '; path=/';
   }
 
-  // ================================================
-  // STYLES
-  // ================================================
   function injectStyles() {
     if (document.getElementById('leadpop-styles')) return;
     var bg      = config.bgColor;
@@ -93,7 +89,6 @@
     style.textContent = css;
     document.head.appendChild(style);
 
-    // Last inn Montserrat hvis ikke allerede lastet
     if (!document.querySelector('link[href*="Montserrat"]')) {
       var link = document.createElement('link');
       link.rel = 'stylesheet';
@@ -102,7 +97,6 @@
     }
   }
 
-  // Hjelpefunksjon for å gjøre farge mørkere/lysere
   function shadeColor(hex, pct) {
     try {
       var num = parseInt(hex.replace('#',''), 16);
@@ -115,9 +109,6 @@
     }
   }
 
-  // ================================================
-  // BUILD HTML
-  // ================================================
   function buildHTML() {
     if (document.getElementById('leadpop-overlay')) return;
 
@@ -156,7 +147,6 @@
     div.innerHTML = html;
     document.body.appendChild(div.firstChild);
 
-    // Events
     document.getElementById('leadpop-close-btn').addEventListener('click', LeadPop.close);
     document.getElementById('leadpop-overlay').addEventListener('click', function(e) {
       if (e.target === this) LeadPop.close();
@@ -167,9 +157,6 @@
     });
   }
 
-  // ================================================
-  // SUBMIT
-  // ================================================
   function submitForm() {
     var values = {};
     var valid = true;
@@ -194,12 +181,35 @@
     btn.textContent = 'Sender...';
 
     var payload = Object.assign({}, values, {
+      client_id: config.clientId,
       source:    'LeadPop',
       page:      window.location.href,
       timestamp: new Date().toISOString()
     });
 
-    // Send til Google Sheets
+    // Send til Supabase (primaer backend)
+    if (config.supabaseUrl && config.supabaseKey) {
+      fetch(config.supabaseUrl + '/rest/v1/leads', {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'apikey':        config.supabaseKey,
+          'Authorization': 'Bearer ' + config.supabaseKey,
+          'Prefer':        'return=minimal'
+        },
+        body: JSON.stringify({
+          client_id: payload.client_id,
+          name:      payload.name    || null,
+          company:   payload.company || null,
+          phone:     payload.phone   || null,
+          email:     payload.email   || null,
+          page:      payload.page,
+          source:    payload.source
+        })
+      }).catch(function(){});
+    }
+
+    // Send til Google Sheets (backup)
     if (config.sheetsUrl) {
       fetch(config.sheetsUrl, {
         method: 'POST',
@@ -208,16 +218,13 @@
       }).catch(function(){});
     }
 
-    // dataLayer
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push(Object.assign({ event: 'leadpop_submitted' }, payload));
 
-    // Plausible
     if (typeof window.plausible === 'function') {
       window.plausible('leadpop_submitted');
     }
 
-    // Vis success
     document.getElementById('leadpop-form-wrap').style.display = 'none';
     var success = document.getElementById('leadpop-success');
     success.classList.add('lp-active');
@@ -226,9 +233,6 @@
     setTimeout(function() { LeadPop.close(); }, 4000);
   }
 
-  // ================================================
-  // PUBLIC API
-  // ================================================
   var LeadPop = window.LeadPop = {
     show: function() {
       if (hasSeen()) return;
@@ -260,11 +264,6 @@
     if (typeof window.plausible === 'function') window.plausible(event);
   }
 
-  // ================================================
-  // AUTO-INIT via GTM
-  // GTM trigger kaller LeadPop.show() direkte,
-  // eller init settes til 'auto' for standalone bruk
-  // ================================================
   if (cfg.init === 'auto') {
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', function() { LeadPop.show(); });
