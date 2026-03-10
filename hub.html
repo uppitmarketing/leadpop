@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="no">
 <head>
@@ -712,7 +711,8 @@ function CustomerPanel({ onOpenBuilder, customers, addCustomer, deleteCustomer }
   const convRate = (domain) => {
     const s = statsFor(domain);
     if (!s.opened) return null;
-    return Math.round((s.submitted / s.opened) * 100) + '%';
+    const rate = (s.submitted / s.opened) * 100;
+    return (rate < 1 ? rate.toFixed(1) : Math.round(rate)) + '%';
   };
 
   const handleAdd = () => {
