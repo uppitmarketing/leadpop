@@ -111,6 +111,7 @@
       return '#' + ((1<<24)|(r<<16)|(g<<8)|b).toString(16).slice(1);
     } catch(e) { return hex; }
   }
+
   function buildHTML() {
     if (document.getElementById('leadpop-overlay')) return;
     var fieldsHTML = config.fields.map(function(f) {
@@ -162,12 +163,10 @@
     if (config.sheetsUrl) {
       fetch(config.sheetsUrl, { method: 'POST', mode: 'no-cors', body: new URLSearchParams(payload) }).catch(function(){});
     }
-    window.dataLayer = window.dataLayer || [];
-    window.dataLayer.push(Object.assign({ event: 'leadpop_submitted' }, payload));
-    if (typeof window.plausible === 'function') window.plausible('leadpop_submitted');
     document.getElementById('leadpop-form-wrap').style.display = 'none';
     document.getElementById('leadpop-success').classList.add('lp-active');
     setSeen();
+    track('submitted');
     if (config.successRedirectUrl) {
       setTimeout(function() { window.location.href = config.successRedirectUrl; }, 2000);
     } else {
@@ -198,7 +197,7 @@
 
   function track(eventType) {
     window.dataLayer = window.dataLayer || [];
-    window.dataLayer.push({ event: 'leadpop_' + eventType });
+    window.dataLayer.push({ event: 'leadpop_' + eventType, client_id: config.clientId });
     if (typeof window.plausible === 'function') window.plausible('leadpop_' + eventType);
     if (config.supabaseUrl && config.supabaseKey) {
       fetch(config.supabaseUrl + '/rest/v1/popup_events', {
