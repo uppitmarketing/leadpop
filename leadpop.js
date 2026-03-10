@@ -47,40 +47,59 @@
     document.cookie = COOKIE_KEY + '=1; expires=' + exp.toUTCString() + '; path=/';
   }
 
+  // ================================================
+  // STYLES
+  // ================================================
+  function isLight(hex) {
+    try {
+      var n = parseInt(hex.replace('#',''), 16);
+      return ((n>>16)*299 + ((n>>8)&0xff)*587 + (n&0xff)*114) / 1000 > 128;
+    } catch(e) { return false; }
+  }
+
   function injectStyles() {
     if (document.getElementById('leadpop-styles')) return;
     var bg      = config.bgColor;
     var primary = config.primaryColor;
-    var inputBg = shadeColor(bg, -15);
-    var border  = shadeColor(bg, 20);
+    var light   = isLight(bg);
 
+    var textColor   = light ? '#1a2030' : '#e8ecf0';
+    var subColor    = light ? '#64748b' : '#8a9099';
+    var strongColor = light ? '#334155' : '#c0c8d4';
+    var inputBg     = light ? '#f1f5f9' : shadeColor(bg, -18);
+    var borderCol   = light ? '#cbd5e1' : shadeColor(bg, 30);
+    var inputColor  = light ? '#334155' : '#e8ecf0';
+    var placeholderColor = light ? '#94a3b8' : '#4a5260';
+    var privacyColor = light ? '#94a3b8' : '#4a5260';
+    var closeColor  = light ? '#64748b' : '#888';
+    var successTextColor = light ? '#64748b' : '#8a9099';
     var css = [
       '#leadpop-overlay{display:none;position:fixed;inset:0;background:rgba(10,14,20,.82);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:' + config.zIndex + ';align-items:center;justify-content:center;padding:20px;box-sizing:border-box}',
       '#leadpop-overlay.lp-active{display:flex;animation:lp-fadein .35s ease}',
       '@keyframes lp-fadein{from{opacity:0}to{opacity:1}}',
-      '.leadpop-box{background:' + bg + ';border:1px solid ' + border + ';border-top:3px solid ' + primary + ';border-radius:0;max-width:500px;width:100%;position:relative;box-shadow:0 30px 80px rgba(0,0,0,.7);animation:lp-slideup .4s cubic-bezier(.16,1,.3,1);overflow:hidden}',
+      '.leadpop-box{background:' + bg + ';border:1px solid ' + borderCol + ';border-top:3px solid ' + primary + ';border-radius:0;max-width:500px;width:100%;position:relative;box-shadow:0 30px 80px rgba(0,0,0,.7);animation:lp-slideup .4s cubic-bezier(.16,1,.3,1);overflow:hidden}',
       '@keyframes lp-slideup{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}',
       '.leadpop-inner{padding:44px 44px 40px}',
-      '.leadpop-close{position:absolute;top:16px;right:16px;background:transparent;border:1px solid ' + border + ';color:#888;font-size:18px;line-height:1;cursor:pointer;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:0;transition:all .2s;font-family:sans-serif}',
-      '.leadpop-close:hover{border-color:' + primary + ';color:#fff;background:rgba(208,2,27,.1)}',
+      '.leadpop-close{position:absolute;top:16px;right:16px;background:transparent;border:1px solid ' + borderCol + ';color:' + closeColor + ';font-size:18px;line-height:1;cursor:pointer;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:0;transition:all .2s;font-family:sans-serif}',
+      '.leadpop-close:hover{border-color:' + primary + ';color:' + primary + '}',
       '.leadpop-label{font-family:Montserrat,Arial,sans-serif;font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:' + primary + ';margin-bottom:16px}',
-      '.leadpop-heading{font-family:Montserrat,Arial,sans-serif;font-size:26px;font-weight:800;text-transform:uppercase;letter-spacing:.01em;color:#fff;line-height:1.1;margin-bottom:10px}',
-      '.leadpop-sub{font-family:Montserrat,Arial,sans-serif;font-size:13px;color:#8a9099;line-height:1.6;margin-bottom:28px}',
-      '.leadpop-sub strong{color:#c0c8d4;font-weight:600}',
+      '.leadpop-heading{font-family:Montserrat,Arial,sans-serif;font-size:26px;font-weight:800;text-transform:uppercase;letter-spacing:.01em;color:' + textColor + ';line-height:1.1;margin-bottom:10px}',
+      '.leadpop-sub{font-family:Montserrat,Arial,sans-serif;font-size:13px;color:' + subColor + ';line-height:1.6;margin-bottom:28px}',
+      '.leadpop-sub strong{color:' + strongColor + ';font-weight:600}',
       '.leadpop-field{margin-bottom:12px}',
-      '.leadpop-input{width:100%;background:' + inputBg + ';border:1px solid ' + border + ';border-radius:0;color:#e8ecf0;font-family:Montserrat,Arial,sans-serif;font-size:13px;padding:12px 16px;box-sizing:border-box;outline:none;transition:border-color .2s;-webkit-appearance:none}',
-      '.leadpop-input::placeholder{color:#4a5260}',
+      '.leadpop-input{width:100%;background:' + inputBg + ';border:1px solid ' + borderCol + ';border-radius:0;color:' + inputColor + ';font-family:Montserrat,Arial,sans-serif;font-size:13px;padding:12px 16px;box-sizing:border-box;outline:none;transition:border-color .2s;-webkit-appearance:none}',
+      '.leadpop-input::placeholder{color:' + placeholderColor + '}',
       '.leadpop-input:focus{border-color:' + primary + '}',
       '.leadpop-input.lp-error{border-color:' + primary + '}',
       '.leadpop-submit{width:100%;background:' + primary + ';color:#fff;border:none;border-radius:0;font-family:Montserrat,Arial,sans-serif;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;padding:14px 24px;cursor:pointer;margin-top:8px;transition:background .2s}',
       '.leadpop-submit:hover{filter:brightness(.88)}',
       '.leadpop-submit:disabled{opacity:.5;cursor:not-allowed}',
-      '.leadpop-privacy{font-family:Montserrat,Arial,sans-serif;font-size:10px;color:#4a5260;margin-top:12px;line-height:1.5}',
+      '.leadpop-privacy{font-family:Montserrat,Arial,sans-serif;font-size:10px;color:' + privacyColor + ';margin-top:12px;line-height:1.5}',
       '.leadpop-success{display:none;text-align:center;padding:56px 44px}',
       '.leadpop-success.lp-active{display:block;animation:lp-fadein .4s ease}',
       '.leadpop-success-icon{width:52px;height:52px;border:2px solid ' + primary + ';border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:20px;color:' + primary + '}',
-      '.leadpop-success h3{font-family:Montserrat,Arial,sans-serif;font-size:20px;font-weight:800;text-transform:uppercase;color:#fff;margin-bottom:10px}',
-      '.leadpop-success p{font-family:Montserrat,Arial,sans-serif;font-size:13px;color:#8a9099;line-height:1.6}',
+      '.leadpop-success h3{font-family:Montserrat,Arial,sans-serif;font-size:20px;font-weight:800;text-transform:uppercase;color:' + textColor + ';margin-bottom:10px}',
+      '.leadpop-success p{font-family:Montserrat,Arial,sans-serif;font-size:13px;color:' + successTextColor + ';line-height:1.6}',
       '@media(max-width:600px){.leadpop-inner{padding:32px 20px 28px}.leadpop-success{padding:40px 20px}.leadpop-heading{font-size:22px}}'
     ].join('');
 
@@ -104,11 +123,11 @@
       var g = Math.min(255, Math.max(0, ((num >> 8) & 0xff) + pct));
       var b = Math.min(255, Math.max(0, (num & 0xff) + pct));
       return '#' + ((1<<24)|(r<<16)|(g<<8)|b).toString(16).slice(1);
-    } catch(e) {
-      return hex;
-    }
+    } catch(e) { return hex; }
   }
-
+  // ================================================
+  // BUILD HTML
+  // ================================================
   function buildHTML() {
     if (document.getElementById('leadpop-overlay')) return;
 
@@ -157,6 +176,9 @@
     });
   }
 
+  // ================================================
+  // SUBMIT
+  // ================================================
   function submitForm() {
     var values = {};
     var valid = true;
@@ -187,7 +209,6 @@
       timestamp: new Date().toISOString()
     });
 
-    // Send til Supabase (primaer backend)
     if (config.supabaseUrl && config.supabaseKey) {
       fetch(config.supabaseUrl + '/rest/v1/leads', {
         method:  'POST',
@@ -209,7 +230,6 @@
       }).catch(function(){});
     }
 
-    // Send til Google Sheets (backup)
     if (config.sheetsUrl) {
       fetch(config.sheetsUrl, {
         method: 'POST',
@@ -233,6 +253,9 @@
     setTimeout(function() { LeadPop.close(); }, 4000);
   }
 
+  // ================================================
+  // PUBLIC API
+  // ================================================
   var LeadPop = window.LeadPop = {
     show: function() {
       if (hasSeen()) return;
