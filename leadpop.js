@@ -1,9 +1,6 @@
 (function() {
   'use strict';
 
-  // ================================================
-  // CONFIG — settes via window.LeadPopConfig i GTM
-  // ================================================
   var cfg = window.LeadPopConfig || {};
 
   var config = {
@@ -97,13 +94,9 @@
       '.leadpop-success p{font-family:Montserrat,Arial,sans-serif;font-size:13px;color:' + successTextColor + ';line-height:1.6}',
       '@media(max-width:600px){.leadpop-inner{padding:32px 20px 28px}.leadpop-success{padding:40px 20px}.leadpop-heading{font-size:22px}}'
     ].join('');
-    var style = document.createElement('style');
-    style.id = 'leadpop-styles';
-    style.textContent = css;
-    document.head.appendChild(style);
+    var style = document.createElement('style'); style.id = 'leadpop-styles'; style.textContent = css; document.head.appendChild(style);
     if (!document.querySelector('link[href*="Montserrat"]')) {
-      var link = document.createElement('link');
-      link.rel = 'stylesheet';
+      var link = document.createElement('link'); link.rel = 'stylesheet';
       link.href = 'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap';
       document.head.appendChild(link);
     }
@@ -139,9 +132,7 @@
         '<h3>' + config.successTitle + '</h3>' +
         '<p>' + config.successText + '</p>' +
       '</div></div></div>';
-    var div = document.createElement('div');
-    div.innerHTML = html;
-    document.body.appendChild(div.firstChild);
+    var div = document.createElement('div'); div.innerHTML = html; document.body.appendChild(div.firstChild);
     document.getElementById('leadpop-close-btn').addEventListener('click', LeadPop.close);
     document.getElementById('leadpop-overlay').addEventListener('click', function(e) { if (e.target === this) LeadPop.close(); });
     document.getElementById('leadpop-submit-btn').addEventListener('click', submitForm);
@@ -160,10 +151,7 @@
     if (!valid) return;
     var btn = document.getElementById('leadpop-submit-btn');
     btn.disabled = true; btn.textContent = 'Sender...';
-    var payload = Object.assign({}, values, {
-      client_id: config.clientId, source: 'LeadPop',
-      page: window.location.href, timestamp: new Date().toISOString()
-    });
+    var payload = Object.assign({}, values, { client_id: config.clientId, source: 'LeadPop', page: window.location.href, timestamp: new Date().toISOString() });
     if (config.supabaseUrl && config.supabaseKey) {
       fetch(config.supabaseUrl + '/rest/v1/leads', {
         method: 'POST',
@@ -193,13 +181,13 @@
       injectStyles(); buildHTML();
       document.getElementById('leadpop-overlay').classList.add('lp-active');
       document.body.style.overflow = 'hidden';
-      track('leadpop_shown');
+      track('opened');
     },
     close: function() {
       var overlay = document.getElementById('leadpop-overlay');
       if (overlay) overlay.classList.remove('lp-active');
       document.body.style.overflow = '';
-      setSeen(); track('leadpop_closed');
+      setSeen(); track('closed');
     },
     reset: function() {
       document.cookie = COOKIE_KEY + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
@@ -208,10 +196,17 @@
     }
   };
 
-  function track(event) {
+  function track(eventType) {
     window.dataLayer = window.dataLayer || [];
-    window.dataLayer.push({ event: event });
-    if (typeof window.plausible === 'function') window.plausible(event);
+    window.dataLayer.push({ event: 'leadpop_' + eventType });
+    if (typeof window.plausible === 'function') window.plausible('leadpop_' + eventType);
+    if (config.supabaseUrl && config.supabaseKey) {
+      fetch(config.supabaseUrl + '/rest/v1/popup_events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': config.supabaseKey, 'Authorization': 'Bearer ' + config.supabaseKey, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ client_id: config.clientId, event_type: eventType, page: window.location.href })
+      }).catch(function(){});
+    }
   }
 
   if (cfg.init === 'auto') {
