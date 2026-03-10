@@ -20,9 +20,10 @@
     bgColor:      cfg.bgColor      || '#2e3440',
     cookieDays:   cfg.cookieDays   != null ? cfg.cookieDays : 7,
     label:        cfg.label        || 'Ta kontakt',
-    successTitle: cfg.successTitle || 'Takk for din henvendelse',
-    successText:  cfg.successText  || 'Vi tar kontakt med deg innen kort tid.',
-    zIndex:       cfg.zIndex       || 999999
+    successTitle:       cfg.successTitle       || 'Takk for din henvendelse',
+    successText:        cfg.successText        || 'Vi tar kontakt med deg innen kort tid.',
+    successRedirectUrl: cfg.successRedirectUrl || '',
+    zIndex:             cfg.zIndex             || 999999
   };
 
   var FIELD_DEFS = {
@@ -47,9 +48,6 @@
     document.cookie = COOKIE_KEY + '=1; expires=' + exp.toUTCString() + '; path=/';
   }
 
-  // ================================================
-  // STYLES
-  // ================================================
   function isLight(hex) {
     try {
       var n = parseInt(hex.replace('#',''), 16);
@@ -59,19 +57,16 @@
 
   function injectStyles() {
     if (document.getElementById('leadpop-styles')) return;
-    var bg      = config.bgColor;
-    var primary = config.primaryColor;
-    var light   = isLight(bg);
-
-    var textColor   = light ? '#1a2030' : '#e8ecf0';
-    var subColor    = light ? '#64748b' : '#8a9099';
+    var bg = config.bgColor, primary = config.primaryColor, light = isLight(bg);
+    var textColor = light ? '#1a2030' : '#e8ecf0';
+    var subColor = light ? '#64748b' : '#8a9099';
     var strongColor = light ? '#334155' : '#c0c8d4';
-    var inputBg     = light ? '#f1f5f9' : shadeColor(bg, -18);
-    var borderCol   = light ? '#cbd5e1' : shadeColor(bg, 30);
-    var inputColor  = light ? '#334155' : '#e8ecf0';
+    var inputBg = light ? '#f1f5f9' : shadeColor(bg, -18);
+    var borderCol = light ? '#cbd5e1' : shadeColor(bg, 30);
+    var inputColor = light ? '#334155' : '#e8ecf0';
     var placeholderColor = light ? '#94a3b8' : '#4a5260';
     var privacyColor = light ? '#94a3b8' : '#4a5260';
-    var closeColor  = light ? '#64748b' : '#888';
+    var closeColor = light ? '#64748b' : '#888';
     var successTextColor = light ? '#64748b' : '#8a9099';
     var css = [
       '#leadpop-overlay{display:none;position:fixed;inset:0;background:rgba(10,14,20,.82);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:' + config.zIndex + ';align-items:center;justify-content:center;padding:20px;box-sizing:border-box}',
@@ -102,12 +97,10 @@
       '.leadpop-success p{font-family:Montserrat,Arial,sans-serif;font-size:13px;color:' + successTextColor + ';line-height:1.6}',
       '@media(max-width:600px){.leadpop-inner{padding:32px 20px 28px}.leadpop-success{padding:40px 20px}.leadpop-heading{font-size:22px}}'
     ].join('');
-
     var style = document.createElement('style');
     style.id = 'leadpop-styles';
     style.textContent = css;
     document.head.appendChild(style);
-
     if (!document.querySelector('link[href*="Montserrat"]')) {
       var link = document.createElement('link');
       link.rel = 'stylesheet';
@@ -125,142 +118,79 @@
       return '#' + ((1<<24)|(r<<16)|(g<<8)|b).toString(16).slice(1);
     } catch(e) { return hex; }
   }
-  // ================================================
-  // BUILD HTML
-  // ================================================
   function buildHTML() {
     if (document.getElementById('leadpop-overlay')) return;
-
     var fieldsHTML = config.fields.map(function(f) {
-      var def = FIELD_DEFS[f];
-      if (!def) return '';
-      return '<div class="leadpop-field">' +
-        '<input type="' + def.type + '" id="leadpop-field-' + f + '" class="leadpop-input" ' +
-        'placeholder="' + def.placeholder + (def.required ? ' *' : '') + '" ' +
-        'autocomplete="' + def.autocomplete + '">' +
-        '</div>';
+      var def = FIELD_DEFS[f]; if (!def) return '';
+      return '<div class="leadpop-field"><input type="' + def.type + '" id="leadpop-field-' + f + '" class="leadpop-input" placeholder="' + def.placeholder + (def.required ? ' *' : '') + '" autocomplete="' + def.autocomplete + '"></div>';
     }).join('');
-
-    var html = '<div id="leadpop-overlay">' +
-      '<div class="leadpop-box">' +
-        '<button class="leadpop-close" id="leadpop-close-btn" aria-label="Lukk">&#x2715;</button>' +
-        '<div id="leadpop-form-wrap">' +
-          '<div class="leadpop-inner">' +
-            '<div class="leadpop-label">' + config.label + '</div>' +
-            '<h2 class="leadpop-heading">' + config.heading + '</h2>' +
-            '<p class="leadpop-sub">' + config.subtext + '</p>' +
-            fieldsHTML +
-            '<button class="leadpop-submit" id="leadpop-submit-btn">' + config.buttonText + ' &rarr;</button>' +
-            '<p class="leadpop-privacy">Vi deler aldri informasjonen din med tredjeparter.</p>' +
-          '</div>' +
-        '</div>' +
-        '<div class="leadpop-success" id="leadpop-success">' +
-          '<div class="leadpop-success-icon">&#10003;</div>' +
-          '<h3>' + config.successTitle + '</h3>' +
-          '<p>' + config.successText + '</p>' +
-        '</div>' +
-      '</div>' +
-    '</div>';
-
+    var html = '<div id="leadpop-overlay"><div class="leadpop-box">' +
+      '<button class="leadpop-close" id="leadpop-close-btn" aria-label="Lukk">&#x2715;</button>' +
+      '<div id="leadpop-form-wrap"><div class="leadpop-inner">' +
+        '<div class="leadpop-label">' + config.label + '</div>' +
+        '<h2 class="leadpop-heading">' + config.heading + '</h2>' +
+        '<p class="leadpop-sub">' + config.subtext + '</p>' +
+        fieldsHTML +
+        '<button class="leadpop-submit" id="leadpop-submit-btn">' + config.buttonText + ' &rarr;</button>' +
+        '<p class="leadpop-privacy">Vi deler aldri informasjonen din med tredjeparter.</p>' +
+      '</div></div>' +
+      '<div class="leadpop-success" id="leadpop-success">' +
+        '<div class="leadpop-success-icon">&#10003;</div>' +
+        '<h3>' + config.successTitle + '</h3>' +
+        '<p>' + config.successText + '</p>' +
+      '</div></div></div>';
     var div = document.createElement('div');
     div.innerHTML = html;
     document.body.appendChild(div.firstChild);
-
     document.getElementById('leadpop-close-btn').addEventListener('click', LeadPop.close);
-    document.getElementById('leadpop-overlay').addEventListener('click', function(e) {
-      if (e.target === this) LeadPop.close();
-    });
+    document.getElementById('leadpop-overlay').addEventListener('click', function(e) { if (e.target === this) LeadPop.close(); });
     document.getElementById('leadpop-submit-btn').addEventListener('click', submitForm);
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') LeadPop.close();
-    });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') LeadPop.close(); });
   }
 
-  // ================================================
-  // SUBMIT
-  // ================================================
   function submitForm() {
-    var values = {};
-    var valid = true;
-
+    var values = {}, valid = true;
     config.fields.forEach(function(f) {
-      var el = document.getElementById('leadpop-field-' + f);
-      if (!el) return;
-      var val = el.value.trim();
-      var def = FIELD_DEFS[f] || {};
+      var el = document.getElementById('leadpop-field-' + f); if (!el) return;
+      var val = el.value.trim(), def = FIELD_DEFS[f] || {};
       el.classList.remove('lp-error');
-      if (def.required && !val) {
-        el.classList.add('lp-error');
-        valid = false;
-      }
+      if (def.required && !val) { el.classList.add('lp-error'); valid = false; }
       values[f] = val;
     });
-
     if (!valid) return;
-
     var btn = document.getElementById('leadpop-submit-btn');
-    btn.disabled = true;
-    btn.textContent = 'Sender...';
-
+    btn.disabled = true; btn.textContent = 'Sender...';
     var payload = Object.assign({}, values, {
-      client_id: config.clientId,
-      source:    'LeadPop',
-      page:      window.location.href,
-      timestamp: new Date().toISOString()
+      client_id: config.clientId, source: 'LeadPop',
+      page: window.location.href, timestamp: new Date().toISOString()
     });
-
     if (config.supabaseUrl && config.supabaseKey) {
       fetch(config.supabaseUrl + '/rest/v1/leads', {
-        method:  'POST',
-        headers: {
-          'Content-Type':  'application/json',
-          'apikey':        config.supabaseKey,
-          'Authorization': 'Bearer ' + config.supabaseKey,
-          'Prefer':        'return=minimal'
-        },
-        body: JSON.stringify({
-          client_id: payload.client_id,
-          name:      payload.name    || null,
-          company:   payload.company || null,
-          phone:     payload.phone   || null,
-          email:     payload.email   || null,
-          page:      payload.page,
-          source:    payload.source
-        })
-      }).catch(function(){});
-    }
-
-    if (config.sheetsUrl) {
-      fetch(config.sheetsUrl, {
         method: 'POST',
-        mode:   'no-cors',
-        body:   new URLSearchParams(payload)
+        headers: { 'Content-Type': 'application/json', 'apikey': config.supabaseKey, 'Authorization': 'Bearer ' + config.supabaseKey, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ client_id: payload.client_id, name: payload.name||null, company: payload.company||null, phone: payload.phone||null, email: payload.email||null, page: payload.page, source: payload.source })
       }).catch(function(){});
     }
-
+    if (config.sheetsUrl) {
+      fetch(config.sheetsUrl, { method: 'POST', mode: 'no-cors', body: new URLSearchParams(payload) }).catch(function(){});
+    }
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push(Object.assign({ event: 'leadpop_submitted' }, payload));
-
-    if (typeof window.plausible === 'function') {
-      window.plausible('leadpop_submitted');
-    }
-
+    if (typeof window.plausible === 'function') window.plausible('leadpop_submitted');
     document.getElementById('leadpop-form-wrap').style.display = 'none';
-    var success = document.getElementById('leadpop-success');
-    success.classList.add('lp-active');
+    document.getElementById('leadpop-success').classList.add('lp-active');
     setSeen();
-
-    setTimeout(function() { LeadPop.close(); }, 4000);
+    if (config.successRedirectUrl) {
+      setTimeout(function() { window.location.href = config.successRedirectUrl; }, 2000);
+    } else {
+      setTimeout(function() { LeadPop.close(); }, 4000);
+    }
   }
 
-  // ================================================
-  // PUBLIC API
-  // ================================================
   var LeadPop = window.LeadPop = {
     show: function() {
       if (hasSeen()) return;
-      injectStyles();
-      buildHTML();
+      injectStyles(); buildHTML();
       document.getElementById('leadpop-overlay').classList.add('lp-active');
       document.body.style.overflow = 'hidden';
       track('leadpop_shown');
@@ -269,15 +199,12 @@
       var overlay = document.getElementById('leadpop-overlay');
       if (overlay) overlay.classList.remove('lp-active');
       document.body.style.overflow = '';
-      setSeen();
-      track('leadpop_closed');
+      setSeen(); track('leadpop_closed');
     },
     reset: function() {
       document.cookie = COOKIE_KEY + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
-      var overlay = document.getElementById('leadpop-overlay');
-      if (overlay) overlay.remove();
-      var styles = document.getElementById('leadpop-styles');
-      if (styles) styles.remove();
+      var overlay = document.getElementById('leadpop-overlay'); if (overlay) overlay.remove();
+      var styles = document.getElementById('leadpop-styles'); if (styles) styles.remove();
     }
   };
 
@@ -290,9 +217,7 @@
   if (cfg.init === 'auto') {
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', function() { LeadPop.show(); });
-    } else {
-      LeadPop.show();
-    }
+    } else { LeadPop.show(); }
   }
 
 })();
