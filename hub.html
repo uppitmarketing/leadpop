@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LeadPop Hub — Uppit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+	--red: #d0021b;
+	--bg: #f5f6f8;
+	--surface: #ffffff;
+	--surface2: #f0f2f5;
+	--border: #e2e6ed;
+	--text: #1a2030;
+	--muted: #7a8394;
+	--green: #16a34a;
+	--blue: #2563eb;
+	--mono: 'JetBrains Mono', monospace;
+	--sans: 'Inter', sans-serif;
+  }
+
+  html, body { height: 100%; background: var(--bg); font-family: var(--sans); color: var(--text); overflow: hidden; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  #root { height: 100vh; display: flex; flex-direction: column; }
+
+  /* TOP NAV */
+  .topnav {
+	height: 56px;
+	background: var(--surface);
+	border-bottom: 1px solid var(--border);
+	display: flex;
+	align-items: center;
+	padding: 0 24px;
+	gap: 0;
+	flex-shrink: 0;
+	position: relative;
+	z-index: 10;
+	box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  .logo {
+	font-size: 13px;
+	font-weight: 800;
+	letter-spacing: .08em;
+	color: var(--red);
+	margin-right: 32px;
+	text-transform: uppercase;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+  }
+  .logo-sep { color: var(--border); font-weight: 300; font-size: 18px; line-height: 1; }
+  .logo span { color: var(--text); font-weight: 600; font-size: 13px; letter-spacing: .02em; text-transform: none; }
+  .nav-tabs { display: flex; gap: 6px; }
+  .nav-tab {
+	padding: 7px 16px;
+	font-size: 13px;
+	font-weight: 500;
+	letter-spacing: 0;
+	text-transform: none;
+	background: transparent;
+	border: 1px solid transparent;
+	border-radius: 8px;
+	color: var(--muted);
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	transition: all .15s;
+	font-family: var(--sans);
+	line-height: 1;
+  }
+  .nav-tab .tab-icon { font-size: 15px; line-height: 1; }
+  .nav-tab:hover { color: var(--text); background: var(--surface2); }
+  .nav-tab.active {
+	color: var(--red);
+	background: #fff0f1;
+	border-color: #fecdd3;
+	font-weight: 600;
+  }
+
+  .status-badge {
+	margin-left: auto;
+	display: flex; align-items: center; gap: 6px;
+	background: #f0fdf4; border: 1px solid #bbf7d0;
+	padding: 4px 10px; border-radius: 20px;
+  }
+  .status-dot {
+	width: 6px; height: 6px; border-radius: 50%; background: var(--green);
+	box-shadow: 0 0 6px var(--green);
+	animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+  .status-text { font-size: 11px; color: var(--green); font-weight: 600; letter-spacing: 0; }
+
+  /* PANELS */
+  .panels { flex: 1; display: flex; overflow: hidden; }
+
+  /* ---- TEST PANEL ---- */
+  .test-panel { width: 100%; display: flex; overflow: hidden; }
+  .test-sidebar {
+	width: 320px;
+	background: var(--surface);
+	border-right: 1px solid var(--border);
+	display: flex; flex-direction: column;
+	overflow: hidden; flex-shrink: 0;
+  }
+  .sidebar-section { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .section-label {
+	font-size: 11px; font-weight: 600; letter-spacing: 0;
+	text-transform: none; color: var(--text); margin-bottom: 10px;
+	display: flex; align-items: center; gap: 6px;
+  }
+  .btn-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .btn {
+	font-family: var(--sans);
+	font-size: 12px; font-weight: 500; letter-spacing: 0;
+	text-transform: none; border: none; cursor: pointer;
+	padding: 8px 16px; border-radius: 7px; transition: filter .15s, opacity .15s;
+	display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn:hover { filter: brightness(.85); }
+  .btn:active { filter: brightness(.7); }
+  .btn-red { background: var(--red); color: #fff; }
+  .btn-dark { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-green { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+  .btn-blue { background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; }
+  .btn-primary {
+	font-family: var(--sans); font-size: 13px; font-weight: 600;
+	background: #3b82f6; color: #fff; border: none; border-radius: 7px;
+	padding: 8px 16px; cursor: pointer; transition: filter .15s;
+	display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-primary:hover { filter: brightness(.88); }
+  .btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-secondary {
+	font-family: var(--sans); font-size: 13px; font-weight: 500;
+	background: #fff; color: #475569; border: 1px solid #e2e8f0; border-radius: 7px;
+	padding: 8px 16px; cursor: pointer; transition: border-color .15s;
+	display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-secondary:hover { border-color: #94a3b8; }
+
+  .log-wrap { flex: 1; overflow-y: auto; padding: 12px 20px; background: #f8fafc; }
+  .log-entry { display: flex; gap: 8px; padding: 3px 0; font-family: var(--mono); font-size: 11px; line-height: 1.5; }
+  .log-ts { color: var(--muted); flex-shrink: 0; }
+  .log-ok { color: #16a34a; }
+  .log-err { color: #dc2626; }
+  .log-info { color: #2563eb; }
+  .log-warn { color: #d97706; }
+
+  .test-main {
+	flex: 1; display: flex; flex-direction: column; overflow: hidden;
+	background: var(--bg);
+  }
+  .test-header {
+	padding: 16px 24px;
+	border-bottom: 1px solid var(--border);
+	background: var(--surface);
+	display: flex; align-items: center; justify-content: space-between;
+  }
+  .test-header h2 { font-size: 14px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--text); }
+
+  .leads-table-wrap { flex: 1; overflow: auto; padding: 20px 24px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th {
+	text-align: left; padding: 10px 12px;
+	font-size: 11px; font-weight: 600; letter-spacing: 0;
+	text-transform: none; color: var(--muted);
+	border-bottom: 2px solid var(--border);
+	white-space: nowrap;
+	background: var(--surface);
+  }
+  td { padding: 11px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; font-size: 13px; }
+  tr:hover td { background: #fafbfc; }
+  .badge {
+	display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: .1em;
+	padding: 2px 8px; text-transform: uppercase; border-radius: 2px; color: #fff;
+  }
+  .empty-state { text-align: center; padding: 60px 20px; color: #94a3b8; }
+  .empty-state .big { font-size: 32px; margin-bottom: 12px; }
+  .empty-icon { font-size: 36px; margin-bottom: 12px; }
+
+  /* ---- BUILDER PANEL ---- */
+  .builder-panel { width: 100%; display: flex; overflow: hidden; }
+  .builder-sidebar {
+	width: 300px; background: var(--surface);
+	border-right: 1px solid var(--border);
+	display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0;
+  }
+  .builder-tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .builder-tab {
+	flex: 1; padding: 10px 4px;
+	font-family: var(--sans); font-size: 12px; font-weight: 500; letter-spacing: 0;
+	text-transform: none; border: none; border-bottom: 2px solid transparent;
+	cursor: pointer; transition: all .15s; background: transparent; color: var(--muted);
+  }
+  .builder-tab.active { background: #fff0f1; border-bottom-color: var(--red); color: var(--red); font-weight: 600; }
+  .builder-form { flex: 1; overflow-y: auto; padding: 16px 20px; }
+  .field-group { margin-bottom: 16px; }
+  .field-label { font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--text); display: block; margin-bottom: 6px; }
+  .field-input {
+	width: 100%; background: var(--surface2); border: 1px solid var(--border);
+	color: var(--text); font-family: var(--sans); font-size: 12px;
+	padding: 8px 12px; outline: none; border-radius: 0;
+	transition: border-color .15s;
+  }
+  .field-input:focus { border-color: var(--red); }
+  textarea.field-input { resize: vertical; line-height: 1.5; }
+
+  .preset-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .preset-btn {
+	padding: 6px 8px; font-family: var(--sans); font-size: 9px; font-weight: 700;
+	letter-spacing: .08em; text-transform: uppercase; cursor: pointer; border: 2px solid;
+	border-radius: 0; transition: filter .15s;
+  }
+  .preset-btn:hover { filter: brightness(1.2); }
+
+  .checkbox-row {
+	display: flex; align-items: center; gap: 10px;
+	padding: 7px 10px; cursor: pointer;
+	border: 1px solid transparent; margin-bottom: 4px; transition: background .1s;
+  }
+  .checkbox-row:hover { background: var(--surface2); }
+  .checkbox-row.checked { background: #fff5f5; border-color: #fca5a5; }
+  .checkbox-row input { accent-color: var(--red); width: 13px; height: 13px; cursor: pointer; }
+
+  .color-row { display: flex; gap: 8px; align-items: center; }
+  .color-row input[type=color] { width: 34px; height: 28px; border: 1px solid var(--border); cursor: pointer; background: transparent; padding: 1px; }
+
+  .builder-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .preview-area {
+	flex: 1; display: flex; align-items: center; justify-content: center;
+	background: radial-gradient(ellipse at 50% 40%, #e8edf5 0%, #f5f6f8 100%);
+	position: relative; overflow: hidden; padding: 40px;
+  }
+  .preview-grid {
+	position: absolute; inset: 0; opacity: .4;
+	background-image: linear-gradient(#d1d9e6 1px, transparent 1px), linear-gradient(90deg, #d1d9e6 1px, transparent 1px);
+	background-size: 48px 48px;
+  }
+  .code-footer {
+	background: var(--surface); border-top: 1px solid var(--border);
+	display: flex; flex-direction: column; height: 200px; overflow: hidden;
+  }
+  .code-footer-header {
+	padding: 8px 20px; border-bottom: 1px solid #dcfce7;
+	display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  }
+  .code-footer-label { font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--text); }
+  pre.code-block {
+	flex: 1; overflow: auto; padding: 12px 20px;
+	font-family: var(--mono); font-size: 11px; line-height: 1.7;
+	color: #1e6b3c; background: #f0fdf4; margin: 0;
+	white-space: pre; border-top: 1px solid #dcfce7;
+  }
+
+  .copy-btn {
+	font-family: var(--sans); font-size: 12px; font-weight: 500; letter-spacing: 0;
+	text-transform: none; background: var(--surface2); color: var(--text);
+	border: 1px solid var(--border); padding: 6px 14px; cursor: pointer; border-radius: 7px;
+	transition: background .15s;
+  }
+  .copy-btn:hover { background: var(--red); border-color: var(--red); color: #fff; }
+  .copy-btn.copied { background: #16532d; border-color: var(--green); color: #4ade80; }
+
+  /* POPUP PREVIEW */
+  .popup-preview {
+	max-width: 400px; width: 100%;
+	position: relative; z-index: 1;
+	font-family: var(--sans);
+	box-shadow: 0 30px 90px rgba(0,0,0,.8);
+  }
+
+  /* GTM GUIDE */
+  .gtm-section { padding: 16px 20px; }
+  .info-box {
+	background: var(--surface2); border: 1px solid var(--border);
+	padding: 14px 16px; margin-bottom: 12px;
+  }
+  .info-box-label { font-size: 9px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; margin-bottom: 8px; }
+  .info-box p { font-size: 11px; color: var(--muted); line-height: 1.6; }
+  .link { color: var(--blue); text-decoration: none; font-size: 11px; }
+  .link:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+const SUPABASE_URL = 'https://shurydpxamkasgsyeupe.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_8VEQPBuMuiVsrCch2ODP_Q_9gxUgulB';
+
+// ─── FETCH STATS ────────────────────────────────────────
+async function fetchEventStats() {
+  try {
+	const r = await fetch(
+	  SUPABASE_URL + '/rest/v1/popup_events?select=client_id,event_type&limit=5000',
+	  { headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY } }
+	);
+	const rows = await r.json();
+	// Aggregate: { 'acusto.no': { opened: 5, closed: 3, submitted: 2 }, ... }
+	const stats = {};
+	rows.forEach(row => {
+	  if (!stats[row.client_id]) stats[row.client_id] = { opened: 0, closed: 0, submitted: 0 };
+	  if (stats[row.client_id][row.event_type] !== undefined) {
+		stats[row.client_id][row.event_type]++;
+	  }
+	});
+	return stats;
+  } catch(e) { return {}; }
+}
+
+// ─── Helpers ────────────────────────────────────────────
+function shadeColor(hex, pct) {
+  try {
+	const num = parseInt(hex.replace('#',''), 16);
+	const r = Math.min(255, Math.max(0, (num >> 16) + pct));
+	const g = Math.min(255, Math.max(0, ((num >> 8) & 0xff) + pct));
+	const b = Math.min(255, Math.max(0, (num & 0xff) + pct));
+	return '#' + ((1<<24)|(r<<16)|(g<<8)|b).toString(16).slice(1);
+  } catch { return hex; }
+}
+function isLight(hex) {
+  try {
+	const n = parseInt(hex.replace('#',''), 16);
+	return ((n>>16)*299 + ((n>>8)&0xff)*587 + (n&0xff)*114) / 1000 > 128;
+  } catch { return false; }
+}
+function clientColor(id) {
+  const map = { 'acusto.no':'#d0021b', 'smartorg.no':'#7c3aed', 'guleholmen.no':'#0369a1', 'regnmedmax.no':'#16a34a' };
+  if (map[id]) return map[id];
+  let hash = 0;
+  for (let c of (id||'')) hash = ((hash << 5) - hash) + c.charCodeAt(0);
+  const colors = ['#d0021b','#7c3aed','#0369a1','#16a34a','#ea580c','#0891b2'];
+  return colors[Math.abs(hash) % colors.length];
+}
+function fmtDate(d) {
+  return new Date(d).toLocaleString('nb-NO',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+}
+
+// ─── Popup Preview ──────────────────────────────────────
+function PopupPreview({ config }) {
+  const bg = config.bgColor, primary = config.primaryColor;
+  const light = isLight(bg);
+
+  // Tekstfarger basert på bakgrunn
+  const textColor = light ? '#1a1a2e' : '#e8ecf0';
+  const subColor  = light ? '#64748b' : '#9aa3af';
+
+  // Input og border: på lyse bakgrunner bruker vi faste mørke farger, på mørke bruker vi shade
+  const inputBg   = light ? '#f1f5f9' : shadeColor(bg, -18);
+  const borderCol = light ? '#cbd5e1' : shadeColor(bg, 30);
+  const inputText = light ? '#334155' : subColor;
+
+  const LABELS = { name:'Navn *', company:'Bedrift', phone:'Telefon', email:'E-post *' };
+  return (
+	<div className="popup-preview" style={{ background: bg, border: `1px solid ${borderCol}`, borderTop: `3px solid ${primary}` }}>
+	  <div style={{ position:'absolute', top:10, right:10, width:26, height:26, border:`1px solid ${borderCol}`, display:'flex', alignItems:'center', justifyContent:'center', color:subColor, fontSize:13, borderRadius:0, cursor:'pointer' }}>✕</div>
+	  <div style={{ padding:'32px 32px 28px', fontFamily:"'Inter',sans-serif" }}>
+		<div style={{ fontSize:9, fontWeight:700, letterSpacing:'.18em', textTransform:'uppercase', color:primary, marginBottom:10 }}>{config.label||'Ta kontakt'}</div>
+		<h2 style={{ fontSize:18, fontWeight:800, textTransform:'uppercase', color:textColor, lineHeight:1.15, margin:'0 0 8px' }}>{config.heading||'Overskrift'}</h2>
+		<p style={{ fontSize:11, color:subColor, lineHeight:1.6, margin:'0 0 16px' }}>{config.subtext||'Undertekst'}</p>
+		{config.fields.map(f => (
+		  <div key={f} style={{ marginBottom:7 }}>
+			<div style={{ width:'100%', background:inputBg, border:`1px solid ${borderCol}`, color:inputText, fontSize:11, padding:'9px 12px' }}>{LABELS[f]||f}</div>
+		  </div>
+		))}
+		<div style={{ width:'100%', background:primary, color:'#fff', fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', padding:'11px 16px', marginTop:8, textAlign:'center' }}>{config.buttonText||'Send'} →</div>
+		<div style={{ fontSize:9, color:subColor, marginTop:9 }}>Vi deler aldri informasjonen din med tredjeparter.</div>
+	  </div>
+	</div>
+  );
+}
+
+// ─── GTM code generator ─────────────────────────────────
+function makeGTM(config, clientId) {
+  const lines = [];
+  lines.push('<script>');
+  lines.push('window.LeadPopConfig = {');
+  if (clientId)              lines.push(`  clientId:     '${clientId}',`);
+  if (config.sheetsUrl)      lines.push(`  sheetsUrl:    '${config.sheetsUrl}',`);
+  lines.push(`  heading:      '${config.heading}',`);
+  lines.push(`  subtext:      '${config.subtext}',`);
+  lines.push(`  buttonText:   '${config.buttonText}',`);
+  lines.push(`  label:        '${config.label}',`);
+  lines.push(`  successTitle: '${config.successTitle}',`);
+  lines.push(`  successText:  '${config.successText}',`);
+  if (config.successRedirectUrl) lines.push(`  successRedirectUrl: '${config.successRedirectUrl}',`);
+  lines.push(`  primaryColor: '${config.primaryColor}',`);
+  lines.push(`  bgColor:      '${config.bgColor}',`);
+  lines.push(`  fields:       ${JSON.stringify(config.fields)},`);
+  lines.push(`  cookieDays:   ${config.cookieDays}`);
+  lines.push('}');
+  lines.push('<\/script>');
+  lines.push('<script src="https://uppitmarketing.github.io/leadpop/leadpop.js"><\/script>');
+  lines.push('<script>LeadPop.show();<\/script>');
+  return lines.join('\n');
+}
+
+// ─── Copy button ────────────────────────────────────────
+function CopyBtn({ text }) {
+  const [ok, setOk] = useState(false);
+  return (
+	<button className={`copy-btn${ok?' copied':''}`} onClick={() => {
+	  navigator.clipboard.writeText(text).then(() => { setOk(true); setTimeout(()=>setOk(false),2000); });
+	}}>{ok ? '✓ Kopiert!' : 'Kopier GTM-kode'}</button>
+  );
+}
+
+// ─── TEST PANEL ─────────────────────────────────────────
+const DEFAULT_TEST_CONFIG = {
+  clientId: 'acusto.no',
+  heading: 'Få et uforpliktende tilbud',
+  subtext: 'Fyll ut skjemaet så tar vi kontakt innen 1 virkedag.',
+  buttonText: 'Send forespørsel',
+  primaryColor: '#d0021b',
+  bgColor: '#1a1a2e',
+  label: 'Akustikkløsninger',
+  cookieDays: 0,
+};
+
+function TestPanel({ onLeadsLoaded }) {
+  const [logs, setLogs] = useState([{ msg:'Klar — klikk "Vis popup" for å teste', type:'info' }]);
+  const [leads, setLeads] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [popupLoaded, setPopupLoaded] = useState(false);
+  const [activeFilter, setActiveFilter] = useState('alle');
+  const logRef = useRef(null);
+
+  const clients = ['alle', ...Array.from(new Set(leads.map(l => l.client_id).filter(Boolean))).sort()];
+  const filteredLeads = activeFilter === 'alle' ? leads : leads.filter(l => l.client_id === activeFilter);
+
+  const addLog = useCallback((msg, type='ok') => {
+	setLogs(l => [...l, { msg, type, ts: new Date().toLocaleTimeString('nb-NO') }]);
+  }, []);
+
+  // Load leadpop.js once and intercept fetch
+  useEffect(() => {
+	// Intercept fetch to log Supabase calls
+	const orig = window.fetch;
+	window._lpFetchPatched = true;
+	window.fetch = function(url, opts) {
+	  if (typeof url === 'string' && url.includes('supabase') && url.includes('/leads')) {
+		addLog('→ Sender lead til Supabase...', 'info');
+		return orig(url, opts).then(r => {
+		  if (r.ok || r.status === 201) addLog(`✓ Lead lagret! (HTTP ${r.status})`, 'ok');
+		  else addLog(`✗ Feil HTTP ${r.status}`, 'err');
+		  return r;
+		}).catch(e => { addLog('✗ Nettverksfeil: ' + e.message, 'err'); throw e; });
+	  }
+	  return orig(url, opts);
+	};
+
+	// Inject config and load script
+	window.LeadPopConfig = { ...DEFAULT_TEST_CONFIG };
+
+	if (!document.getElementById('leadpop-script')) {
+	  const s = document.createElement('script');
+	  s.id = 'leadpop-script';
+	  s.src = 'https://uppitmarketing.github.io/leadpop/leadpop.js';
+	  s.onload = () => { setPopupLoaded(true); addLog('leadpop.js lastet fra GitHub Pages ✓', 'ok'); };
+	  s.onerror = () => addLog('Klarte ikke laste leadpop.js', 'err');
+	  document.head.appendChild(s);
+	} else {
+	  setPopupLoaded(!!window.LeadPop);
+	}
+
+	return () => { window.fetch = orig; };
+  }, []);
+
+  useEffect(() => {
+	if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
+  }, [logs]);
+
+  const showPopup = () => {
+	window.LeadPopConfig = { ...DEFAULT_TEST_CONFIG };
+	if (window.LeadPop) { LeadPop.show(); addLog('Popup trigger ✓', 'info'); }
+	else addLog('LeadPop ikke klar ennå, vent litt', 'warn');
+  };
+
+  const resetPopup = () => {
+	if (window.LeadPop) {
+	  LeadPop.reset();
+	  addLog('Cookie slettet ✓', 'info');
+	  setTimeout(() => { LeadPop.show(); addLog('Popup reset og vist ✓', 'ok'); }, 150);
+	}
+  };
+
+  const testConnection = async () => {
+	addLog('Tester Supabase-tilkobling...', 'info');
+	try {
+	  const r = await fetch(`${SUPABASE_URL}/rest/v1/leads?limit=1`, {
+		headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+	  });
+	  addLog(`✓ Supabase OK — HTTP ${r.status}`, 'ok');
+	} catch(e) { addLog('✗ ' + e.message, 'err'); }
+  };
+
+  const fetchLeads = async () => {
+	setLoading(true);
+	addLog('Henter leads fra Supabase...', 'info');
+	try {
+	  const r = await fetch(`${SUPABASE_URL}/rest/v1/leads?order=created_at.desc&limit=50`, {
+		headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+	  });
+	  const data = await r.json();
+	  setLeads(data);
+	  if (onLeadsLoaded) onLeadsLoaded(data);
+	  addLog(`✓ Hentet ${data.length} lead(s)`, 'ok');
+	} catch(e) { addLog('✗ ' + e.message, 'err'); }
+	finally { setLoading(false); }
+  };
+
+  const BADGE_COLORS = {};
+
+  return (
+	<div className="test-panel">
+	  {/* Sidebar */}
+	  <div className="test-sidebar">
+		<div className="sidebar-section">
+		  <div className="section-label">▶ Test popup</div>
+		  <div className="btn-row">
+			<button className="btn btn-red" onClick={showPopup}>Vis popup</button>
+			<button className="btn btn-dark" onClick={resetPopup}>↺ Reset</button>
+			<button className="btn btn-blue" onClick={testConnection}>🔌 Test tilkobling</button>
+		  </div>
+		</div>
+
+		<div className="sidebar-section">
+		  <div className="section-label">🗄 Leads-data</div>
+		  <div className="btn-row">
+			<button className="btn btn-green" onClick={fetchLeads} disabled={loading}>
+			  {loading ? 'Henter...' : '↓ Hent leads'}
+			</button>
+			<button className="btn btn-dark" onClick={() => window.open(`https://supabase.com/dashboard/project/shurydpxamkasgsyeupe/editor`, '_blank')}>
+			  ↗ Table Editor
+			</button>
+		  </div>
+		</div>
+
+		<div className="sidebar-section" style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', borderBottom:'none' }}>
+		  <div className="section-label">📋 Log</div>
+		  <div className="log-wrap" ref={logRef} style={{ flex:1, background:'#f8fafc' }}>
+			{logs.map((l,i) => (
+			  <div key={i} className="log-entry">
+				<span className="log-ts">{l.ts||'--:--:--'}</span>
+				<span className={`log-${l.type}`}>{l.msg}</span>
+			  </div>
+			))}
+		  </div>
+		</div>
+	  </div>
+
+	  {/* Main leads table */}
+	  <div className="test-main">
+		<div className="test-header">
+		  <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+			<h2 style={{ marginRight:8 }}>Leads</h2>
+			{leads.length > 0 && clients.map(c => {
+			  const count = c === 'alle' ? leads.length : leads.filter(l => l.client_id === c).length;
+			  const isActive = activeFilter === c;
+			  const color = c === 'alle' ? null : clientColor(c);
+			  return (
+				<button key={c} onClick={() => setActiveFilter(c)} style={{
+				  display:'inline-flex', alignItems:'center', gap:6,
+				  padding:'5px 12px', borderRadius:20, border:'1.5px solid',
+				  borderColor: isActive ? (color||'var(--red)') : 'var(--border)',
+				  background: isActive ? (color ? color+'18' : '#fff0f1') : 'var(--surface2)',
+				  color: isActive ? (color||'var(--red)') : 'var(--muted)',
+				  fontFamily:'var(--sans)', fontSize:12, fontWeight: isActive ? 600 : 400,
+				  cursor:'pointer', transition:'all .15s',
+				}}>
+				  {c === 'alle' ? 'Alle' : c}
+				  <span style={{
+					background: isActive ? (color||'var(--red)') : 'var(--border)',
+					color: isActive ? '#fff' : 'var(--muted)',
+					borderRadius:10, fontSize:10, fontWeight:700,
+					padding:'1px 6px', lineHeight:'16px',
+				  }}>{count}</span>
+				</button>
+			  );
+			})}
+		  </div>
+		  <a className="link" href="https://supabase.com/dashboard/project/shurydpxamkasgsyeupe/editor" target="_blank">↗ Åpne i Supabase</a>
+		</div>
+
+		<div className="leads-table-wrap">
+		  {leads.length === 0 ? (
+			<div className="empty-state">
+			  <div className="empty-icon">📭</div>
+			  <div style={{ fontWeight:700, marginBottom:6 }}>Ingen leads lastet</div>
+			  <div style={{ fontSize:12 }}>Klikk "Hent leads" i sidepanelet, eller send et testskjema via popupen</div>
+			</div>
+		  ) : filteredLeads.length === 0 ? (
+			<div className="empty-state">
+			  <div className="empty-icon">🔍</div>
+			  <div style={{ fontWeight:700, marginBottom:6 }}>Ingen leads for {activeFilter}</div>
+			  <button onClick={() => setActiveFilter('alle')} style={{ marginTop:8, fontSize:12, color:'var(--red)', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>Vis alle leads</button>
+			</div>
+		  ) : (
+			<table>
+			  <thead>
+				<tr>
+				  <th>Tidspunkt</th>
+				  <th>Kunde</th>
+				  <th>Navn</th>
+				  <th>Bedrift</th>
+				  <th>Telefon</th>
+				  <th>E-post</th>
+				  <th>Side</th>
+				</tr>
+			  </thead>
+			  <tbody>
+				{filteredLeads.map(l => (
+				  <tr key={l.id}>
+					<td style={{ color:'var(--muted)', fontFamily:'var(--mono)', fontSize:11, whiteSpace:'nowrap' }}>{fmtDate(l.created_at)}</td>
+					<td><span className="badge" style={{ background: clientColor(l.client_id) }}>{l.client_id||'—'}</span></td>
+					<td style={{ fontWeight:600 }}>{l.name||'—'}</td>
+					<td style={{ color:'var(--muted)' }}>{l.company||'—'}</td>
+					<td>{l.phone ? <a className="link" href={`tel:${l.phone}`}>{l.phone}</a> : <span style={{ color:'var(--muted)' }}>—</span>}</td>
+					<td>{l.email ? <a className="link" href={`mailto:${l.email}`}>{l.email}</a> : <span style={{ color:'var(--muted)' }}>—</span>}</td>
+					<td style={{ color:'var(--muted)', fontFamily:'var(--mono)', fontSize:10, maxWidth:180, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+					  {l.page ? <a className="link" href={l.page} target="_blank" style={{ fontSize:10 }}>{l.page.replace(/^https?:\/\//,'').substring(0,35)}</a> : '—'}
+					</td>
+				  </tr>
+				))}
+			  </tbody>
+			</table>
+		  )}
+		</div>
+	  </div>
+	</div>
+  );
+}
+
+
+// ─── CUSTOMER PANEL ─────────────────────────────────────
+const EMPTY_CONFIG = {
+  heading: '',
+  subtext: '',
+  buttonText: 'Send forespørsel',
+  label: 'Ta kontakt',
+  successTitle: 'Takk for din henvendelse',
+  successText: 'Vi tar kontakt med deg innen kort tid.',
+  successRedirectUrl: '',
+  primaryColor: '#d0021b',
+  bgColor: '#2e3440',
+  fields: ['name', 'company', 'phone', 'email'],
+  cookieDays: 7,
+  sheetsUrl: '',
+};
+
+function useCustomers() {
+  const [customers, setCustomers] = useState(() => {
+	try { return JSON.parse(localStorage.getItem('lp_customers') || '[]'); }
+	catch { return []; }
+  });
+  const save = (list) => { setCustomers(list); localStorage.setItem('lp_customers', JSON.stringify(list)); };
+  const addCustomer = (name, domain) => {
+	const nc = { id: Date.now().toString(), name, domain, config: { ...EMPTY_CONFIG, clientId: domain }, updatedAt: new Date().toISOString() };
+	save([...customers, nc]);
+	return nc;
+  };
+  const updateCustomer = (id, config) => {
+	const list = customers.map(c => c.id === id ? { ...c, config, updatedAt: new Date().toISOString() } : c);
+	save(list);
+  };
+  const deleteCustomer = (id) => save(customers.filter(c => c.id !== id));
+  return { customers, addCustomer, updateCustomer, deleteCustomer };
+}
+
+function CustomerPanel({ onOpenBuilder }) {
+  const { customers, addCustomer, deleteCustomer } = useCustomers();
+  const [showNew, setShowNew] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newDomain, setNewDomain] = useState('');
+  const [copiedId, setCopiedId] = useState(null);
+  const [stats, setStats] = useState({});
+  const [leadCounts, setLeadCounts] = useState({});
+
+  useEffect(() => {
+	fetchEventStats().then(setStats);
+	// Hent leads direkte i CustomerPanel
+	fetch(SUPABASE_URL + '/rest/v1/leads?select=client_id&limit=5000', {
+	  headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY }
+	})
+	  .then(r => r.json())
+	  .then(rows => {
+		const counts = {};
+		rows.forEach(r => { counts[r.client_id] = (counts[r.client_id] || 0) + 1; });
+		setLeadCounts(counts);
+	  })
+	  .catch(() => {});
+  }, []);
+
+  const leadsForCustomer = (domain) => leadCounts[domain] || 0;
+  const statsFor = (domain) => stats[domain] || { opened: 0, closed: 0, submitted: 0 };
+  const convRate = (domain) => {
+	const s = statsFor(domain);
+	if (!s.opened) return null;
+	return Math.round((s.submitted / s.opened) * 100) + '%';
+  };
+
+  const handleAdd = () => {
+	if (!newName.trim() || !newDomain.trim()) return;
+	addCustomer(newName.trim(), newDomain.trim().replace(/^https?:\/\//, '').replace(/\/$/, ''));
+	setNewName(''); setNewDomain(''); setShowNew(false);
+  };
+
+  const handleCopyGTM = (customer) => {
+	const code = makeGTM(customer.config, customer.domain);
+	navigator.clipboard.writeText(code).then(() => {
+	  setCopiedId(customer.id);
+	  setTimeout(() => setCopiedId(null), 2000);
+	});
+  };
+
+  const fmtDate = (iso) => {
+	if (!iso) return '—';
+	const d = new Date(iso);
+	return d.toLocaleDateString('nb-NO', { day:'2-digit', month:'short', year:'numeric' });
+  };
+
+  return (
+	<div className="panel" style={{ overflowY:'auto' }}>
+	  <div style={{ maxWidth:860, margin:'0 auto', padding:'32px 24px' }}>
+
+		<div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:28 }}>
+		  <div>
+			<h2 style={{ margin:0, fontSize:18, fontWeight:700, color:'#1e293b' }}>Kunder</h2>
+			<p style={{ margin:'4px 0 0', fontSize:13, color:'#64748b' }}>{customers.length} kunde{customers.length !== 1 ? 'r' : ''} registrert</p>
+		  </div>
+		  <button className="btn-primary" onClick={() => setShowNew(v => !v)}>
+			{showNew ? '✕ Avbryt' : '+ Ny kunde'}
+		  </button>
+		</div>
+
+		{showNew && (
+		  <div style={{ background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:8, padding:20, marginBottom:24 }}>
+			<p style={{ margin:'0 0 14px', fontWeight:600, fontSize:14, color:'#1e293b' }}>Legg til ny kunde</p>
+			<div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:14 }}>
+			  <div className="field-group">
+				<label className="field-label">Kundenavn</label>
+				<input className="field-input" placeholder="f.eks. Acusto AS" value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key==='Enter' && handleAdd()} />
+			  </div>
+			  <div className="field-group">
+				<label className="field-label">Domene</label>
+				<input className="field-input" placeholder="f.eks. acusto.no" value={newDomain} onChange={e => setNewDomain(e.target.value)} onKeyDown={e => e.key==='Enter' && handleAdd()} />
+			  </div>
+			</div>
+			<button className="btn-primary" onClick={handleAdd} disabled={!newName.trim() || !newDomain.trim()}>
+			  Opprett kunde
+			</button>
+		  </div>
+		)}
+
+		{customers.length === 0 ? (
+		  <div style={{ textAlign:'center', padding:'64px 24px', color:'#94a3b8' }}>
+			<div style={{ fontSize:40, marginBottom:12 }}>👥</div>
+			<p style={{ margin:0, fontSize:15, fontWeight:500 }}>Ingen kunder enda</p>
+			<p style={{ margin:'6px 0 0', fontSize:13 }}>Klikk "+ Ny kunde" for å komme i gang</p>
+		  </div>
+		) : (
+		  <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+			{customers.map(customer => {
+			  const lc = leadsForCustomer(customer.domain);
+			  return (
+				<div key={customer.id} style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:8, padding:'18px 20px', display:'flex', alignItems:'center', gap:16 }}>
+				  <div style={{ width:44, height:44, borderRadius:8, background:'#f1f5f9', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:700, color:'#475569', flexShrink:0 }}>
+					{customer.name.charAt(0).toUpperCase()}
+				  </div>
+				  <div style={{ flex:1, minWidth:0 }}>
+					<div style={{ fontWeight:600, fontSize:15, color:'#1e293b', marginBottom:2 }}>{customer.name}</div>
+					<div style={{ fontSize:13, color:'#64748b' }}>{customer.domain}</div>
+				  </div>
+				  {/* Stats */}
+				  <div style={{ display:'flex', gap:20, alignItems:'center', flexShrink:0 }}>
+					{[
+					  { label:'Åpnet',   val: statsFor(customer.domain).opened,    color:'#3b82f6' },
+					  { label:'Lukket',  val: statsFor(customer.domain).closed,    color:'#f59e0b' },
+					  { label:'Sendt',   val: statsFor(customer.domain).submitted, color:'#10b981' },
+					  { label:'Leads',   val: lc,                                  color:'#8b5cf6' },
+					].map(s => (
+					  <div key={s.label} style={{ textAlign:'center', minWidth:42 }}>
+						<div style={{ fontSize:18, fontWeight:700, color:s.color, lineHeight:1 }}>{s.val}</div>
+						<div style={{ fontSize:10, color:'#94a3b8', marginTop:2 }}>{s.label}</div>
+					  </div>
+					))}
+					{convRate(customer.domain) && (
+					  <div style={{ textAlign:'center', minWidth:48, background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:6, padding:'4px 8px' }}>
+						<div style={{ fontSize:16, fontWeight:700, color:'#16a34a', lineHeight:1 }}>{convRate(customer.domain)}</div>
+						<div style={{ fontSize:10, color:'#4ade80', marginTop:2 }}>konv.rate</div>
+					  </div>
+					)}
+					<div style={{ textAlign:'right', paddingLeft:8, borderLeft:'1px solid #e2e8f0' }}>
+					  <div style={{ fontSize:11, color:'#94a3b8' }}>Sist redigert</div>
+					  <div style={{ fontSize:12, color:'#475569', marginTop:1 }}>{fmtDate(customer.updatedAt)}</div>
+					</div>
+				  </div>
+				  <div style={{ display:'flex', gap:8, flexShrink:0 }}>
+					<button
+					  className="btn-secondary"
+					  onClick={() => handleCopyGTM(customer)}
+					  style={{ fontSize:12, padding:'6px 12px' }}
+					>
+					  {copiedId === customer.id ? '✓ Kopiert!' : '</> GTM'}
+					</button>
+					<button
+					  className="btn-primary"
+					  onClick={() => onOpenBuilder(customer)}
+					  style={{ fontSize:12, padding:'6px 14px' }}
+					>
+					  ✏️ Rediger
+					</button>
+					<button
+					  onClick={() => { if (window.confirm('Slett ' + customer.name + '?')) deleteCustomer(customer.id); }}
+					  style={{ background:'transparent', border:'1px solid #fca5a5', color:'#ef4444', borderRadius:6, padding:'6px 10px', cursor:'pointer', fontSize:12 }}
+					>
+					  🗑
+					</button>
+				  </div>
+				</div>
+			  );
+			})}
+		  </div>
+		)}
+	  </div>
+	</div>
+  );
+}
+
+// ─── BUILDER PANEL ──────────────────────────────────────
+const DEFAULT_CONFIG = {
+  heading: 'Har du utfordringer med støy eller akustikk?',
+  subtext: 'Få en uforpliktende vurdering av ditt lydmiljø fra våre eksperter.',
+  buttonText: 'Be om vurdering',
+  label: 'Gratis vurdering',
+  successTitle: 'Takk for din henvendelse',
+  successText: 'Vi tar kontakt med deg innen kort tid.',
+  successRedirectUrl: '',
+  primaryColor: '#d0021b',
+  bgColor: '#2e3440',
+  fields: ['name', 'company', 'phone', 'email'],
+  cookieDays: 7,
+  sheetsUrl: '',
+  clientId: 'kunde.no',
+};
+
+const PRESETS = [
+  { name:'Acusto',    primaryColor:'#d0021b', bgColor:'#1a1a2e' },
+  { name:'Blå',       primaryColor:'#3b82f6', bgColor:'#0f172a' },
+  { name:'Grønn',     primaryColor:'#16a34a', bgColor:'#1a2e1a' },
+  { name:'Oransje',   primaryColor:'#ea580c', bgColor:'#1c1209' },
+  { name:'Lys',       primaryColor:'#6366f1', bgColor:'#f8fafc' },
+  { name:'Teal',      primaryColor:'#0891b2', bgColor:'#0f1f2e' },
+];
+
+const FIELD_OPTIONS = [
+  { key:'name',    label:'Navn',    required:true },
+  { key:'company', label:'Bedrift', required:false },
+  { key:'phone',   label:'Telefon', required:false },
+  { key:'email',   label:'E-post',  required:true },
+];
+
+function BuilderPanel({ customer, onSave, onBack }) {
+  const [config, setConfig] = useState(customer ? customer.config : DEFAULT_CONFIG);
+  const [btab, setBtab] = useState('design');
+  const [saveStatus, setSaveStatus] = useState(null);
+  const saveTimer = useRef(null);
+  const skipSave = useRef(true);
+
+  // Synkroniser config når customer endres
+  useEffect(() => {
+	skipSave.current = true;
+	setConfig(customer ? { ...customer.config } : DEFAULT_CONFIG);
+	setSaveStatus(null);
+  }, [customer?.id]);
+
+  // Auto-save med 800ms debounce
+  useEffect(() => {
+	if (skipSave.current) { skipSave.current = false; return; }
+	if (!customer || !onSave) return;
+	setSaveStatus('saving');
+	if (saveTimer.current) clearTimeout(saveTimer.current);
+	saveTimer.current = setTimeout(() => {
+	  onSave(config);
+	  setSaveStatus('saved');
+	  setTimeout(() => setSaveStatus(null), 2000);
+	}, 800);
+	return () => clearTimeout(saveTimer.current);
+  }, [config]);
+
+  const upd = (k, v) => setConfig(c => ({ ...c, [k]: v }));
+  const toggleField = f => setConfig(c => ({
+	...c, fields: c.fields.includes(f) ? c.fields.filter(x=>x!==f) : [...c.fields, f]
+  }));
+
+  const gtm = makeGTM(config, config.clientId);
+
+  const inp = { className:'field-input' };
+  const grp = { className:'field-group' };
+
+  return (
+	<div className="builder-panel">
+	  {/* Sidebar */}
+	  <div className="builder-sidebar">
+		<div className="builder-tabs" style={{ position:'relative' }}>
+		  {saveStatus === 'saving' && (
+			<span style={{ position:'absolute', top:8, right:8, fontSize:11, color:'#94a3b8' }}>Lagrer…</span>
+		  )}
+		  {saveStatus === 'saved' && (
+			<span style={{ position:'absolute', top:8, right:8, fontSize:11, color:'#16a34a', fontWeight:600 }}>✓ Lagret</span>
+		  )}
+		  {['design','tekst','integrasjon'].map(t => (
+			<button key={t} className={`builder-tab${btab===t?' active':''}`} onClick={()=>setBtab(t)}>{t}</button>
+		  ))}
+		</div>
+
+		<div className="builder-form">
+
+		  {btab === 'design' && <>
+			<div {...grp}>
+			  <label className="field-label">Preset</label>
+			  <div className="preset-grid">
+				{PRESETS.map(p => (
+				  <button key={p.name} className="preset-btn"
+					style={{ background:p.bgColor, borderColor:p.primaryColor, color:'#fff' }}
+					onClick={() => { upd('primaryColor',p.primaryColor); upd('bgColor',p.bgColor); }}>
+					{p.name}
+				  </button>
+				))}
+			  </div>
+			</div>
+
+			<div {...grp}>
+			  <label className="field-label">Primærfarge</label>
+			  <div className="color-row">
+				<input type="color" value={config.primaryColor} onChange={e=>upd('primaryColor',e.target.value)} />
+				<input {...inp} type="text" value={config.primaryColor} onChange={e=>upd('primaryColor',e.target.value)} style={{ flex:1 }} />
+			  </div>
+			</div>
+
+			<div {...grp}>
+			  <label className="field-label">Bakgrunnsfarge</label>
+			  <div className="color-row">
+				<input type="color" value={config.bgColor} onChange={e=>upd('bgColor',e.target.value)} />
+				<input {...inp} type="text" value={config.bgColor} onChange={e=>upd('bgColor',e.target.value)} style={{ flex:1 }} />
+			  </div>
+			</div>
+
+			<div {...grp}>
+			  <label className="field-label">Skjemafelt</label>
+			  {FIELD_OPTIONS.map(f => (
+				<div key={f.key} className={`checkbox-row${config.fields.includes(f.key)?' checked':''}`}
+				  onClick={()=>toggleField(f.key)}>
+				  <input type="checkbox" checked={config.fields.includes(f.key)} onChange={()=>toggleField(f.key)} />
+				  <span style={{ fontSize:12 }}>{f.label}</span>
+				  {f.required && <span style={{ fontSize:9, color:'var(--muted)', marginLeft:'auto' }}>påkrevd</span>}
+				</div>
+			  ))}
+			</div>
+
+			<div {...grp}>
+			  <label className="field-label">Cookie-varighet (dager)</label>
+			  <input {...inp} type="number" value={config.cookieDays} min={0} max={365}
+				onChange={e=>upd('cookieDays', parseInt(e.target.value)||0)} />
+			  <div style={{ fontSize:10, color:'var(--muted)', marginTop:4 }}>0 = alltid vis (testing)</div>
+			</div>
+		  </>}
+
+		  {btab === 'tekst' && <>
+			{[
+			  { key:'clientId',    label:'Kunde-ID (hostname)' },
+			  { key:'label',       label:'Label (liten tekst øverst)' },
+			  { key:'heading',     label:'Overskrift' },
+			  { key:'subtext',     label:'Undertekst', multi:true },
+			  { key:'buttonText',  label:'Knapptekst' },
+			  { key:'successTitle',label:'Suksess-overskrift' },
+			  { key:'successText', label:'Suksess-tekst' },
+			  { key:'successRedirectUrl', label:'Redirect-URL etter suksess (valgfritt)' },
+			].map(({key,label,multi}) => (
+			  <div key={key} {...grp}>
+				<label className="field-label">{label}</label>
+				{multi
+				  ? <textarea {...inp} rows={3} value={config[key]} onChange={e=>upd(key,e.target.value)} />
+				  : <input {...inp} type="text" value={config[key]} onChange={e=>upd(key,e.target.value)} />
+				}
+			  </div>
+			))}
+		  </>}
+
+		  {btab === 'integrasjon' && <>
+			<div style={{ padding:'12px', background:'var(--surface2)', border:'1px solid var(--border)', marginBottom:12 }}>
+			  <div style={{ fontSize:9, fontWeight:800, letterSpacing:'.16em', color:'var(--red)', marginBottom:8, textTransform:'uppercase' }}>Supabase (aktiv)</div>
+			  <div style={{ fontSize:11, color:'var(--muted)', lineHeight:1.6, fontFamily:'var(--mono)' }}>
+				{SUPABASE_URL.replace('https://','')}<br />
+				<span style={{ color:'#16a34a' }}>✓ Leads lagres automatisk</span>
+			  </div>
+			</div>
+
+			<div {...grp}>
+			  <label className="field-label">Google Sheets URL (backup)</label>
+			  <input {...inp} type="text" value={config.sheetsUrl}
+				onChange={e=>upd('sheetsUrl',e.target.value)}
+				placeholder="https://script.google.com/macros/s/..." />
+			</div>
+
+			<div style={{ marginTop:16, padding:'10px 12px', background:'#f0fdf4', border:'1px solid #bbf7d0' }}>
+			  <div style={{ fontSize:9, fontWeight:800, letterSpacing:'.12em', color:'#16a34a', marginBottom:6 }}>STACK</div>
+			  <div style={{ fontSize:11, color:'var(--muted)', lineHeight:1.8 }}>
+				✓ leadpop.js → GitHub Pages<br/>
+				✓ Supabase leads-tabell + RLS<br/>
+				✓ client_id per kunde
+			  </div>
+			</div>
+		  </>}
+		</div>
+	  </div>
+
+	  {/* Preview + code */}
+	  <div className="builder-main">
+		<div className="preview-area">
+		  <div className="preview-grid" />
+		  <PopupPreview config={config} />
+		</div>
+
+		<div className="code-footer">
+		  <div className="code-footer-header">
+			<span className="code-footer-label">GTM Custom HTML — klar til bruk</span>
+			<CopyBtn text={gtm} />
+		  </div>
+		  <pre className="code-block">{gtm}</pre>
+		</div>
+	  </div>
+	</div>
+  );
+}
+
+// ─── APP SHELL ──────────────────────────────────────────
+function App() {
+  const [tab, setTab] = useState('customers');
+  const [editingCustomer, setEditingCustomer] = useState(null);
+  const { customers, updateCustomer } = useCustomers();
+  const [leads, setLeads] = useState([]);
+
+  const handleOpenBuilder = (customer) => {
+	setEditingCustomer(customer);
+	setTab('builder');
+  };
+
+  const handleSave = (config) => {
+	if (editingCustomer) {
+	  updateCustomer(editingCustomer.id, config);
+	  setEditingCustomer(c => ({ ...c, config }));
+	}
+  };
+
+  const handleBack = () => {
+	setEditingCustomer(null);
+	setTab('customers');
+  };
+
+  return (
+	<div id="root" style={{ height:'100vh', display:'flex', flexDirection:'column' }}>
+	  <div className="topnav">
+		<div className="logo">Uppit <span className="logo-sep">|</span><span>LeadPop Hub</span></div>
+		<div className="nav-tabs">
+		  {[
+			{ id:'customers', label:'Kunder',       icon:'👥' },
+			{ id:'test',      label:'Test & Leads', icon:'📋' },
+			{ id:'builder',   label:'Popup Builder', icon:'🎨' },
+		  ].map(t => (
+			<button key={t.id} className={`nav-tab${tab===t.id?' active':''}`} onClick={()=>setTab(t.id)}>
+			  <span className="tab-icon">{t.icon}</span>
+			  {t.label}
+			</button>
+		  ))}
+		</div>
+		<div className="status-badge">
+		  <div className="status-dot" />
+		  <span className="status-text">Supabase live</span>
+		</div>
+	  </div>
+
+	  <div className="panels" style={{ position:'relative' }}>
+		{tab === 'customers' && <CustomerPanel onOpenBuilder={handleOpenBuilder} />}
+		{tab === 'test'      && <TestPanel onLeadsLoaded={setLeads} />}
+		{tab === 'builder'   && <BuilderPanel customer={editingCustomer} onSave={handleSave} onBack={handleBack} />}
+	  </div>
+	</div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
