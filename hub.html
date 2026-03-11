@@ -809,215 +809,11 @@ function useCustomers() {
   return { customers, loading, addCustomer, updateCustomer, deleteCustomer };
 }
 
-// ─── CUSTOMER DETAIL PANEL ──────────────────────────────
-function SvgLineChart({ data, keys, colors, height }) {
-  const W = 700, H = height || 180, padL = 28, padR = 12, padT = 10, padB = 28;
-  const w = W - padL - padR, h = H - padT - padB;
-  const allVals = data.flatMap(d => keys.map(k => d[k] || 0));
-  const maxVal = Math.max(...allVals, 1);
-
-  const x = (i) => padL + (i / (data.length - 1 || 1)) * w;
-  const y = (v) => padT + h - (v / maxVal) * h;
-
-  const path = (key) => data.map((d, i) =>
-    (i === 0 ? 'M' : 'L') + x(i).toFixed(1) + ',' + y(d[key] || 0).toFixed(1)
-  ).join(' ');
-
-  // X-axis labels: show ~6 labels
-  const step = Math.max(1, Math.floor(data.length / 6));
-  const xLabels = data.map((d, i) => i % step === 0 || i === data.length - 1 ? { i, label: d.dag } : null).filter(Boolean);
-
-  // Y-axis ticks
-  const yTicks = [0, 0.25, 0.5, 0.75, 1].map(t => ({ v: Math.round(t * maxVal), y: y(t * maxVal) }));
-
-  return (
-    <svg viewBox={'0 0 ' + W + ' ' + H} style={{ width:'100%', height: H }}>
-      {/* Grid */}
-      {yTicks.map(t => (
-        <g key={t.v}>
-          <line x1={padL} x2={W - padR} y1={t.y} y2={t.y} stroke="#f1f5f9" strokeWidth="1" />
-          <text x={padL - 4} y={t.y + 4} textAnchor="end" fontSize="9" fill="#94a3b8">{t.v}</text>
-        </g>
-      ))}
-      {/* X labels */}
-      {xLabels.map(({ i, label }) => (
-        <text key={i} x={x(i)} y={H - 4} textAnchor="middle" fontSize="9" fill="#94a3b8">{label}</text>
-      ))}
-      {/* Lines */}
-      {keys.map((key, ki) => (
-        <path key={key} d={path(key)} fill="none" stroke={colors[ki]} strokeWidth="2" strokeLinejoin="round" />
-      ))}
-      {/* Legend */}
-      {keys.map((key, ki) => (
-        <g key={key} transform={'translate(' + (padL + ki * 80) + ',' + (H - 8) + ')'}>
-          <rect x="0" y="-7" width="12" height="3" rx="1.5" fill={colors[ki]} />
-          <text x="15" y="0" fontSize="9" fill="#64748b">{key}</text>
-        </g>
-      ))}
-    </svg>
-  );
-}
-
-function CustomerDetailPanel({ customer, onClose }) {
-  const [period, setPeriod] = useState(30);
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    const since = new Date();
-    since.setDate(since.getDate() - period);
-
-    fetch(
-      SUPABASE_URL + '/rest/v1/popup_events?client_id=eq.' + encodeURIComponent(customer.domain) +
-      '&created_at=gte.' + since.toISOString() + '&order=created_at.asc&limit=5000',
-      { headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY } }
-    )
-      .then(r => r.json())
-      .then(rows => setEvents(Array.isArray(rows) ? rows : []))
-      .catch(() => setEvents([]))
-      .finally(() => setLoading(false));
-  }, [customer.domain, period]);
-
-  // Graf: per dag
-  const chartData = React.useMemo(() => {
-    const days = {};
-    for (let i = period - 1; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const key = d.toLocaleDateString('nb-NO', { day:'2-digit', month:'short' });
-      days[key] = { dag: key, Åpnet: 0, Lukket: 0, Sendt: 0 };
-    }
-    events.forEach(e => {
-      const key = new Date(e.created_at).toLocaleDateString('nb-NO', { day:'2-digit', month:'short' });
-      if (!days[key]) return;
-      if (e.event_type === 'opened')    days[key].Åpnet++;
-      if (e.event_type === 'closed')    days[key].Lukket++;
-      if (e.event_type === 'submitted') days[key].Sendt++;
-    });
-    return Object.values(days);
-  }, [events, period]);
-
-  // Topp sider
-  const topPages = React.useMemo(() => {
-    const pages = {};
-    events.forEach(e => {
-      try {
-        const path = new URL(e.page).pathname;
-        if (!pages[path]) pages[path] = { path, opened: 0, closed: 0, submitted: 0 };
-        if (e.event_type === 'opened')    pages[path].opened++;
-        if (e.event_type === 'closed')    pages[path].closed++;
-        if (e.event_type === 'submitted') pages[path].submitted++;
-      } catch {}
-    });
-    return Object.values(pages).sort((a,b) => (b.opened+b.closed+b.submitted) - (a.opened+a.closed+a.submitted)).slice(0, 8);
-  }, [events]);
-
-  const totals = React.useMemo(() => {
-    const t = { opened: 0, closed: 0, submitted: 0 };
-    events.forEach(e => {
-      if (e.event_type === 'opened')    t.opened++;
-      if (e.event_type === 'closed')    t.closed++;
-      if (e.event_type === 'submitted') t.submitted++;
-    });
-    return t;
-  }, [events]);
-
-  const convRate = totals.opened ? ((totals.submitted / totals.opened) * 100) : 0;
-
-  return (
-    <div style={{ borderTop:'2px solid #e2e8f0', background:'#f8fafc', padding:'24px 20px', borderRadius:'0 0 8px 8px' }}>
-      {/* Header */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
-        <div style={{ display:'flex', gap:8 }}>
-          {[{l:'7 dager',v:7},{l:'30 dager',v:30},{l:'90 dager',v:90}].map(b => (
-            <button key={b.v} onClick={() => setPeriod(b.v)} style={{
-              padding:'5px 14px', borderRadius:6, fontSize:12, fontWeight:600, cursor:'pointer',
-              background: period === b.v ? '#1e293b' : '#fff',
-              color: period === b.v ? '#fff' : '#475569',
-              border:'1px solid ' + (period === b.v ? '#1e293b' : '#e2e8f0'),
-            }}>{b.l}</button>
-          ))}
-        </div>
-        <button onClick={onClose} style={{ background:'transparent', border:'none', cursor:'pointer', color:'#94a3b8', fontSize:18 }}>✕</button>
-      </div>
-
-      {loading ? (
-        <div style={{ textAlign:'center', padding:'40px 0', color:'#94a3b8', fontSize:14 }}>Laster data…</div>
-      ) : (
-        <>
-          {/* KPI */}
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:12, marginBottom:20 }}>
-            {[
-              { label:'Åpnet',     val: totals.opened,    color:'#3b82f6', bg:'#eff6ff', border:'#bfdbfe' },
-              { label:'Lukket',    val: totals.closed,    color:'#f59e0b', bg:'#fffbeb', border:'#fde68a' },
-              { label:'Sendt',     val: totals.submitted, color:'#10b981', bg:'#f0fdf4', border:'#bbf7d0' },
-              { label:'Konv.rate', val: (convRate < 1 ? convRate.toFixed(1) : Math.round(convRate)) + '%', color:'#8b5cf6', bg:'#faf5ff', border:'#e9d5ff' },
-            ].map(k => (
-              <div key={k.label} style={{ background:k.bg, border:'1px solid '+k.border, borderRadius:8, padding:'14px 16px', textAlign:'center' }}>
-                <div style={{ fontSize:26, fontWeight:800, color:k.color, lineHeight:1 }}>{k.val}</div>
-                <div style={{ fontSize:11, color:'#94a3b8', marginTop:4, fontWeight:500 }}>{k.label}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Graf */}
-          <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:8, padding:'16px 12px', marginBottom:16 }}>
-            <div style={{ fontSize:13, fontWeight:600, color:'#1e293b', marginBottom:12, paddingLeft:4 }}>
-              Aktivitet siste {period} dager
-            </div>
-            {events.length === 0 ? (
-              <div style={{ textAlign:'center', padding:'32px 0', color:'#94a3b8', fontSize:13 }}>Ingen events i denne perioden</div>
-            ) : (
-              <SvgLineChart
-                data={chartData}
-                keys={['Åpnet','Lukket','Sendt']}
-                colors={['#3b82f6','#f59e0b','#10b981']}
-                height={180}
-              />
-            )}
-          </div>
-
-          {/* Topp sider */}
-          {topPages.length > 0 && (
-            <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:8, overflow:'hidden' }}>
-              <div style={{ padding:'12px 16px', borderBottom:'1px solid #f1f5f9', fontSize:13, fontWeight:600, color:'#1e293b' }}>
-                Topp sider
-              </div>
-              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
-                <thead>
-                  <tr style={{ background:'#f8fafc' }}>
-                    {['Side','Åpnet','Lukket','Sendt'].map(h => (
-                      <th key={h} style={{ padding:'8px 14px', textAlign:h==='Side'?'left':'center', color:'#64748b', fontWeight:600, fontSize:11, textTransform:'uppercase', letterSpacing:'.04em' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {topPages.map((p, i) => (
-                    <tr key={i} style={{ borderTop:'1px solid #f1f5f9' }}>
-                      <td style={{ padding:'9px 14px', color:'#334155', fontFamily:'monospace', fontSize:11, maxWidth:300, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.path}</td>
-                      <td style={{ padding:'9px 14px', textAlign:'center', color:'#3b82f6', fontWeight:600 }}>{p.opened}</td>
-                      <td style={{ padding:'9px 14px', textAlign:'center', color:'#f59e0b', fontWeight:600 }}>{p.closed}</td>
-                      <td style={{ padding:'9px 14px', textAlign:'center', color:'#10b981', fontWeight:600 }}>{p.submitted}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-
 function CustomerPanel({ onOpenBuilder, customers, addCustomer, deleteCustomer }) {
   const [showNew, setShowNew] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDomain, setNewDomain] = useState('');
   const [copiedId, setCopiedId] = useState(null);
-  const [expandedId, setExpandedId] = useState(null);
   const [stats, setStats] = useState({});
   const [leadCounts, setLeadCounts] = useState({});
 
@@ -1108,77 +904,60 @@ function CustomerPanel({ onOpenBuilder, customers, addCustomer, deleteCustomer }
           <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
             {customers.map(customer => {
               const lc = leadsForCustomer(customer.domain);
-              const isExpanded = expandedId === customer.id;
               return (
-                <div key={customer.id} style={{ background:'#fff', border:'1px solid ' + (isExpanded ? '#94a3b8' : '#e2e8f0'), borderRadius:8, overflow:'hidden', transition:'border-color .15s' }}>
-                  {/* Kort-header — klikk for å ekspandere */}
-                  <div
-                    style={{ padding:'18px 20px', display:'flex', alignItems:'center', gap:16, cursor:'pointer' }}
-                    onClick={() => setExpandedId(isExpanded ? null : customer.id)}
-                  >
-                    <div style={{ width:44, height:44, borderRadius:8, background:'#f1f5f9', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:700, color:'#475569', flexShrink:0 }}>
-                      {customer.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontWeight:600, fontSize:15, color:'#1e293b', marginBottom:2 }}>{customer.name}</div>
-                      <div style={{ fontSize:13, color:'#64748b' }}>{customer.domain}</div>
-                    </div>
-                    {/* Stats */}
-                    <div style={{ display:'flex', gap:20, alignItems:'center', flexShrink:0 }}>
-                      {[
-                        { label:'Åpnet',  val: statsFor(customer.domain).opened,    color:'#3b82f6' },
-                        { label:'Lukket', val: statsFor(customer.domain).closed,    color:'#f59e0b' },
-                        { label:'Sendt',  val: statsFor(customer.domain).submitted, color:'#10b981' },
-                        { label:'Leads',  val: lc,                                  color:'#8b5cf6' },
-                      ].map(s => (
-                        <div key={s.label} style={{ textAlign:'center', minWidth:42 }}>
-                          <div style={{ fontSize:18, fontWeight:700, color:s.color, lineHeight:1 }}>{s.val}</div>
-                          <div style={{ fontSize:10, color:'#94a3b8', marginTop:2 }}>{s.label}</div>
-                        </div>
-                      ))}
-                      {convRate(customer.domain) && (
-                        <div style={{ textAlign:'center', minWidth:48, background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:6, padding:'4px 8px' }}>
-                          <div style={{ fontSize:16, fontWeight:700, color:'#16a34a', lineHeight:1 }}>{convRate(customer.domain)}</div>
-                          <div style={{ fontSize:10, color:'#4ade80', marginTop:2 }}>konv.rate</div>
-                        </div>
-                      )}
-                      <div style={{ textAlign:'right', paddingLeft:8, borderLeft:'1px solid #e2e8f0' }}>
-                        <div style={{ fontSize:11, color:'#94a3b8' }}>Sist redigert</div>
-                        <div style={{ fontSize:12, color:'#475569', marginTop:1 }}>{fmtDate(customer.updatedAt)}</div>
-                      </div>
-                    </div>
-                    <div style={{ display:'flex', gap:8, flexShrink:0 }} onClick={e => e.stopPropagation()}>
-                      <button
-                        className="btn-secondary"
-                        onClick={() => handleCopyGTM(customer)}
-                        style={{ fontSize:12, padding:'6px 12px' }}
-                      >
-                        {copiedId === customer.id ? '✓ Kopiert!' : '</> GTM'}
-                      </button>
-                      <button
-                        className="btn-primary"
-                        onClick={() => onOpenBuilder(customer)}
-                        style={{ fontSize:12, padding:'6px 14px' }}
-                      >
-                        ✏️ Rediger
-                      </button>
-                      <button
-                        onClick={() => { if (window.confirm('Slett ' + customer.name + '?')) deleteCustomer(customer.id); }}
-                        style={{ background:'transparent', border:'1px solid #fca5a5', color:'#ef4444', borderRadius:6, padding:'6px 10px', cursor:'pointer', fontSize:12 }}
-                      >
-                        🗑
-                      </button>
-                    </div>
-                    {/* Ekspander-pil */}
-                    <div style={{ color:'#94a3b8', fontSize:14, marginLeft:4, transition:'transform .2s', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</div>
+                <div key={customer.id} style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:8, padding:'18px 20px', display:'flex', alignItems:'center', gap:16 }}>
+                  <div style={{ width:44, height:44, borderRadius:8, background:'#f1f5f9', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:700, color:'#475569', flexShrink:0 }}>
+                    {customer.name.charAt(0).toUpperCase()}
                   </div>
-                  {/* Detalj-panel */}
-                  {isExpanded && (
-                    <CustomerDetailPanel
-                      customer={customer}
-                      onClose={() => setExpandedId(null)}
-                    />
-                  )}
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontWeight:600, fontSize:15, color:'#1e293b', marginBottom:2 }}>{customer.name}</div>
+                    <div style={{ fontSize:13, color:'#64748b' }}>{customer.domain}</div>
+                  </div>
+                  <div style={{ display:'flex', gap:20, alignItems:'center', flexShrink:0 }}>
+                    {[
+                      { label:'Åpnet',  val: statsFor(customer.domain).opened,    color:'#3b82f6' },
+                      { label:'Lukket', val: statsFor(customer.domain).closed,    color:'#f59e0b' },
+                      { label:'Sendt',  val: statsFor(customer.domain).submitted, color:'#10b981' },
+                      { label:'Leads',  val: lc,                                  color:'#8b5cf6' },
+                    ].map(s => (
+                      <div key={s.label} style={{ textAlign:'center', minWidth:42 }}>
+                        <div style={{ fontSize:18, fontWeight:700, color:s.color, lineHeight:1 }}>{s.val}</div>
+                        <div style={{ fontSize:10, color:'#94a3b8', marginTop:2 }}>{s.label}</div>
+                      </div>
+                    ))}
+                    {convRate(customer.domain) && (
+                      <div style={{ textAlign:'center', minWidth:48, background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:6, padding:'4px 8px' }}>
+                        <div style={{ fontSize:16, fontWeight:700, color:'#16a34a', lineHeight:1 }}>{convRate(customer.domain)}</div>
+                        <div style={{ fontSize:10, color:'#4ade80', marginTop:2 }}>konv.rate</div>
+                      </div>
+                    )}
+                    <div style={{ textAlign:'right', paddingLeft:8, borderLeft:'1px solid #e2e8f0' }}>
+                      <div style={{ fontSize:11, color:'#94a3b8' }}>Sist redigert</div>
+                      <div style={{ fontSize:12, color:'#475569', marginTop:1 }}>{fmtDate(customer.updatedAt)}</div>
+                    </div>
+                  </div>
+                  <div style={{ display:'flex', gap:8, flexShrink:0 }}>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => handleCopyGTM(customer)}
+                      style={{ fontSize:12, padding:'6px 12px' }}
+                    >
+                      {copiedId === customer.id ? '✓ Kopiert!' : '</> GTM'}
+                    </button>
+                    <button
+                      className="btn-primary"
+                      onClick={() => onOpenBuilder(customer)}
+                      style={{ fontSize:12, padding:'6px 14px' }}
+                    >
+                      ✏️ Rediger
+                    </button>
+                    <button
+                      onClick={() => { if (window.confirm('Slett ' + customer.name + '?')) deleteCustomer(customer.id); }}
+                      style={{ background:'transparent', border:'1px solid #fca5a5', color:'#ef4444', borderRadius:6, padding:'6px 10px', cursor:'pointer', fontSize:12 }}
+                    >
+                      🗑
+                    </button>
+                  </div>
                 </div>
               );
             })}
