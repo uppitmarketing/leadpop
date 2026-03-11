@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="no">
 <head>
@@ -919,11 +920,11 @@ function CustomerPanel({ onOpenBuilder, customers, addCustomer, deleteCustomer }
                   <div style={{ width:44, height:44, borderRadius:8, background:'#f1f5f9', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:700, color:'#475569', flexShrink:0 }}>
                     {customer.name.charAt(0).toUpperCase()}
                   </div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontWeight:600, fontSize:15, color:'#1e293b', marginBottom:2 }}>{customer.name}</div>
-                    <div style={{ fontSize:13, color:'#64748b' }}>{customer.domain}</div>
+                  <div style={{ flex:'0 0 140px', minWidth:0 }}>
+                    <div style={{ fontWeight:600, fontSize:15, color:'#1e293b', marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{customer.name}</div>
+                    <div style={{ fontSize:13, color:'#64748b', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{customer.domain}</div>
                   </div>
-                  <div style={{ display:'flex', gap:20, alignItems:'center', flexShrink:0 }}>
+                  <div style={{ display:'flex', gap:20, alignItems:'center', flex:1, justifyContent:'flex-end' }}>
                     {[
                       { label:'Åpnet',  val: statsFor(customer.domain).opened,    color:'#3b82f6' },
                       { label:'Lukket', val: statsFor(customer.domain).closed,    color:'#f59e0b' },
