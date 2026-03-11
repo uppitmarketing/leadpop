@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
 <title>LeadPop Hub — Uppit</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -296,7 +297,79 @@
 </style>
 </head>
 <body>
-<div id="root"></div>
+<div id="auth-screen" style="
+  position:fixed; inset:0; z-index:9999;
+  background:#f5f6f8;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Inter',sans-serif;
+">
+  <div style="
+    background:#fff; border:1px solid #e2e6ed;
+    border-radius:12px; padding:40px 48px;
+    box-shadow:0 8px 32px rgba(0,0,0,.08);
+    width:100%; max-width:360px; text-align:center;
+  ">
+    <div style="font-size:13px;font-weight:800;letter-spacing:.08em;color:#d0021b;text-transform:uppercase;margin-bottom:4px">UPPIT</div>
+    <div style="font-size:18px;font-weight:700;color:#1a2030;margin-bottom:6px">LeadPop Hub</div>
+    <div style="font-size:13px;color:#7a8394;margin-bottom:28px">Skriv inn passord for å fortsette</div>
+    <input id="auth-input" type="password" placeholder="Passord" style="
+      width:100%; padding:10px 14px; font-size:14px;
+      border:1px solid #e2e6ed; border-radius:8px;
+      font-family:'Inter',sans-serif; outline:none;
+      margin-bottom:12px; box-sizing:border-box;
+      transition:border-color .15s;
+    " />
+    <div id="auth-error" style="font-size:12px;color:#d0021b;margin-bottom:10px;min-height:18px;"></div>
+    <button id="auth-btn" style="
+      width:100%; padding:10px; font-size:14px; font-weight:600;
+      background:#d0021b; color:#fff; border:none; border-radius:8px;
+      cursor:pointer; font-family:'Inter',sans-serif;
+      transition:filter .15s;
+    ">Logg inn</button>
+  </div>
+</div>
+
+<div id="root" style="display:none"></div>
+
+<script>
+(function() {
+  const PASS_HASH = '21b9321d90d9276edda0d5bf0ea816eb3f82c98b70ce3f71c4394fb5c19b0e1e';
+
+  async function sha256(str) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+
+  // Sjekk om allerede autentisert i denne sesjonen
+  if (sessionStorage.getItem('lp_auth') === '1') {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('root').style.display = '';
+    return;
+  }
+
+  async function attempt() {
+    const val = document.getElementById('auth-input').value;
+    const hash = await sha256(val);
+    if (hash === PASS_HASH) {
+      sessionStorage.setItem('lp_auth', '1');
+      document.getElementById('auth-screen').style.display = 'none';
+      document.getElementById('root').style.display = '';
+    } else {
+      document.getElementById('auth-error').textContent = 'Feil passord, prøv igjen';
+      document.getElementById('auth-input').value = '';
+      document.getElementById('auth-input').focus();
+    }
+  }
+
+  document.getElementById('auth-btn').addEventListener('click', attempt);
+  document.getElementById('auth-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') attempt();
+    document.getElementById('auth-error').textContent = '';
+  });
+  document.getElementById('auth-btn').addEventListener('mouseover', function() { this.style.filter='brightness(.85)'; });
+  document.getElementById('auth-btn').addEventListener('mouseout', function() { this.style.filter=''; });
+})();
+</script>
 
 <script type="text/babel">
 const { useState, useEffect, useRef, useCallback } = React;
