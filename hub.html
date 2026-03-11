@@ -10,6 +10,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.12.7/Recharts.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -808,11 +809,205 @@ function useCustomers() {
   return { customers, loading, addCustomer, updateCustomer, deleteCustomer };
 }
 
+// ─── CUSTOMER DETAIL PANEL ──────────────────────────────
+function CustomerDetailPanel({ customer, onClose }) {
+  const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } = Recharts;
+  const [period, setPeriod] = useState(30);
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    const since = new Date();
+    since.setDate(since.getDate() - period);
+    const isoSince = since.toISOString();
+
+    fetch(
+      SUPABASE_URL + '/rest/v1/popup_events?client_id=eq.' + encodeURIComponent(customer.domain) +
+      '&created_at=gte.' + isoSince + '&order=created_at.asc&limit=5000',
+      { headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY } }
+    )
+      .then(r => r.json())
+      .then(rows => { setEvents(Array.isArray(rows) ? rows : []); })
+      .catch(() => setEvents([]))
+      .finally(() => setLoading(false));
+  }, [customer.domain, period]);
+
+  // Graf: gruppert per dag
+  const chartData = React.useMemo(() => {
+    const days = {};
+    const today = new Date();
+    for (let i = period - 1; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const key = d.toLocaleDateString('nb-NO', { day:'2-digit', month:'short' });
+      days[key] = { dag: key, Åpnet: 0, Lukket: 0, Sendt: 0 };
+    }
+    events.forEach(e => {
+      const key = new Date(e.created_at).toLocaleDateString('nb-NO', { day:'2-digit', month:'short' });
+      if (!days[key]) return;
+      if (e.event_type === 'opened')    days[key].Åpnet++;
+      if (e.event_type === 'closed')    days[key].Lukket++;
+      if (e.event_type === 'submitted') days[key].Sendt++;
+    });
+    return Object.values(days);
+  }, [events, period]);
+
+  // Topp sider
+  const topPages = React.useMemo(() => {
+    const pages = {};
+    events.forEach(e => {
+      try {
+        const url = new URL(e.page);
+        const path = url.pathname + (url.search || '');
+        if (!pages[path]) pages[path] = { path, opened: 0, closed: 0, submitted: 0, total: 0 };
+        pages[path].total++;
+        if (e.event_type === 'opened')    pages[path].opened++;
+        if (e.event_type === 'closed')    pages[path].closed++;
+        if (e.event_type === 'submitted') pages[path].submitted++;
+      } catch {}
+    });
+    return Object.values(pages).sort((a,b) => b.total - a.total).slice(0, 8);
+  }, [events]);
+
+  // Totaler
+  const totals = React.useMemo(() => {
+    const t = { opened: 0, closed: 0, submitted: 0 };
+    events.forEach(e => {
+      if (e.event_type === 'opened')    t.opened++;
+      if (e.event_type === 'closed')    t.closed++;
+      if (e.event_type === 'submitted') t.submitted++;
+    });
+    return t;
+  }, [events]);
+
+  const convRate = totals.opened ? ((totals.submitted / totals.opened) * 100) : 0;
+
+  const periodBtns = [
+    { label: '7 dager',  val: 7 },
+    { label: '30 dager', val: 30 },
+    { label: '90 dager', val: 90 },
+  ];
+
+  return (
+    <div style={{
+      borderTop: '2px solid #e2e8f0',
+      background: '#f8fafc',
+      padding: '24px 20px',
+      marginTop: 0,
+      borderRadius: '0 0 8px 8px',
+    }}>
+      {/* Header */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: 20 }}>
+        <div style={{ display:'flex', gap: 8 }}>
+          {periodBtns.map(b => (
+            <button
+              key={b.val}
+              onClick={() => setPeriod(b.val)}
+              style={{
+                padding: '5px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                background: period === b.val ? '#1e293b' : '#fff',
+                color: period === b.val ? '#fff' : '#475569',
+                border: '1px solid ' + (period === b.val ? '#1e293b' : '#e2e8f0'),
+                transition: 'all .15s',
+              }}
+            >{b.label}</button>
+          ))}
+        </div>
+        <button onClick={onClose} style={{ background:'transparent', border:'none', cursor:'pointer', color:'#94a3b8', fontSize: 18, lineHeight:1, padding:'2px 6px' }}>✕</button>
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign:'center', padding: '40px 0', color:'#94a3b8', fontSize:14 }}>Laster data…</div>
+      ) : (
+        <>
+          {/* KPI-kort */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:12, marginBottom:24 }}>
+            {[
+              { label:'Åpnet',       val: totals.opened,    color:'#3b82f6', bg:'#eff6ff' },
+              { label:'Lukket',      val: totals.closed,    color:'#f59e0b', bg:'#fffbeb' },
+              { label:'Sendt',       val: totals.submitted, color:'#10b981', bg:'#f0fdf4' },
+              { label:'Konv.rate',   val: (convRate < 1 ? convRate.toFixed(1) : Math.round(convRate)) + '%', color:'#8b5cf6', bg:'#faf5ff' },
+            ].map(k => (
+              <div key={k.label} style={{ background: k.bg, border:'1px solid', borderColor: k.bg === '#eff6ff' ? '#bfdbfe' : k.bg === '#fffbeb' ? '#fde68a' : k.bg === '#f0fdf4' ? '#bbf7d0' : '#e9d5ff', borderRadius:8, padding:'14px 16px', textAlign:'center' }}>
+                <div style={{ fontSize:24, fontWeight:800, color:k.color, lineHeight:1 }}>{k.val}</div>
+                <div style={{ fontSize:11, color:'#94a3b8', marginTop:4, fontWeight:500 }}>{k.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Graf */}
+          <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:8, padding:'16px 12px', marginBottom:20 }}>
+            <div style={{ fontSize:13, fontWeight:600, color:'#1e293b', marginBottom:14, paddingLeft:4 }}>
+              Aktivitet siste {period} dager
+            </div>
+            {events.length === 0 ? (
+              <div style={{ textAlign:'center', padding:'32px 0', color:'#94a3b8', fontSize:13 }}>Ingen events i denne perioden</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={chartData} margin={{ top:4, right:12, bottom:0, left:-20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis
+                    dataKey="dag"
+                    tick={{ fontSize: 10, fill:'#94a3b8' }}
+                    tickLine={false}
+                    interval={period === 7 ? 0 : period === 30 ? 4 : 13}
+                  />
+                  <YAxis tick={{ fontSize:10, fill:'#94a3b8' }} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{ fontSize:12, borderRadius:6, border:'1px solid #e2e8f0', boxShadow:'0 2px 8px rgba(0,0,0,.08)' }}
+                    labelStyle={{ fontWeight:600, color:'#1e293b' }}
+                  />
+                  <Legend wrapperStyle={{ fontSize:11, paddingTop:8 }} />
+                  <Line type="monotone" dataKey="Åpnet"  stroke="#3b82f6" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="Lukket" stroke="#f59e0b" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="Sendt"  stroke="#10b981" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          {/* Topp sider */}
+          {topPages.length > 0 && (
+            <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:8, overflow:'hidden' }}>
+              <div style={{ padding:'12px 16px', borderBottom:'1px solid #f1f5f9', fontSize:13, fontWeight:600, color:'#1e293b' }}>
+                Topp sider
+              </div>
+              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+                <thead>
+                  <tr style={{ background:'#f8fafc' }}>
+                    {['Side', 'Åpnet','Lukket','Sendt'].map(h => (
+                      <th key={h} style={{ padding:'8px 14px', textAlign: h==='Side'?'left':'center', color:'#64748b', fontWeight:600, fontSize:11, textTransform:'uppercase', letterSpacing:'.04em' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {topPages.map((p, i) => (
+                    <tr key={i} style={{ borderTop:'1px solid #f1f5f9' }}>
+                      <td style={{ padding:'9px 14px', color:'#334155', fontFamily:'monospace', fontSize:11, maxWidth:260, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                        {p.path === '/' ? '/' : p.path}
+                      </td>
+                      <td style={{ padding:'9px 14px', textAlign:'center', color:'#3b82f6', fontWeight:600 }}>{p.opened}</td>
+                      <td style={{ padding:'9px 14px', textAlign:'center', color:'#f59e0b', fontWeight:600 }}>{p.closed}</td>
+                      <td style={{ padding:'9px 14px', textAlign:'center', color:'#10b981', fontWeight:600 }}>{p.submitted}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 function CustomerPanel({ onOpenBuilder, customers, addCustomer, deleteCustomer }) {
   const [showNew, setShowNew] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDomain, setNewDomain] = useState('');
   const [copiedId, setCopiedId] = useState(null);
+  const [expandedId, setExpandedId] = useState(null);
   const [stats, setStats] = useState({});
   const [leadCounts, setLeadCounts] = useState({});
 
@@ -903,61 +1098,77 @@ function CustomerPanel({ onOpenBuilder, customers, addCustomer, deleteCustomer }
           <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
             {customers.map(customer => {
               const lc = leadsForCustomer(customer.domain);
+              const isExpanded = expandedId === customer.id;
               return (
-                <div key={customer.id} style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:8, padding:'18px 20px', display:'flex', alignItems:'center', gap:16 }}>
-                  <div style={{ width:44, height:44, borderRadius:8, background:'#f1f5f9', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:700, color:'#475569', flexShrink:0 }}>
-                    {customer.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontWeight:600, fontSize:15, color:'#1e293b', marginBottom:2 }}>{customer.name}</div>
-                    <div style={{ fontSize:13, color:'#64748b' }}>{customer.domain}</div>
-                  </div>
-                  {/* Stats */}
-                  <div style={{ display:'flex', gap:20, alignItems:'center', flexShrink:0 }}>
-                    {[
-                      { label:'Åpnet',   val: statsFor(customer.domain).opened,    color:'#3b82f6' },
-                      { label:'Lukket',  val: statsFor(customer.domain).closed,    color:'#f59e0b' },
-                      { label:'Sendt',   val: statsFor(customer.domain).submitted, color:'#10b981' },
-                      { label:'Leads',   val: lc,                                  color:'#8b5cf6' },
-                    ].map(s => (
-                      <div key={s.label} style={{ textAlign:'center', minWidth:42 }}>
-                        <div style={{ fontSize:18, fontWeight:700, color:s.color, lineHeight:1 }}>{s.val}</div>
-                        <div style={{ fontSize:10, color:'#94a3b8', marginTop:2 }}>{s.label}</div>
-                      </div>
-                    ))}
-                    {convRate(customer.domain) && (
-                      <div style={{ textAlign:'center', minWidth:48, background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:6, padding:'4px 8px' }}>
-                        <div style={{ fontSize:16, fontWeight:700, color:'#16a34a', lineHeight:1 }}>{convRate(customer.domain)}</div>
-                        <div style={{ fontSize:10, color:'#4ade80', marginTop:2 }}>konv.rate</div>
-                      </div>
-                    )}
-                    <div style={{ textAlign:'right', paddingLeft:8, borderLeft:'1px solid #e2e8f0' }}>
-                      <div style={{ fontSize:11, color:'#94a3b8' }}>Sist redigert</div>
-                      <div style={{ fontSize:12, color:'#475569', marginTop:1 }}>{fmtDate(customer.updatedAt)}</div>
+                <div key={customer.id} style={{ background:'#fff', border:'1px solid ' + (isExpanded ? '#94a3b8' : '#e2e8f0'), borderRadius:8, overflow:'hidden', transition:'border-color .15s' }}>
+                  {/* Kort-header — klikk for å ekspandere */}
+                  <div
+                    style={{ padding:'18px 20px', display:'flex', alignItems:'center', gap:16, cursor:'pointer' }}
+                    onClick={() => setExpandedId(isExpanded ? null : customer.id)}
+                  >
+                    <div style={{ width:44, height:44, borderRadius:8, background:'#f1f5f9', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:700, color:'#475569', flexShrink:0 }}>
+                      {customer.name.charAt(0).toUpperCase()}
                     </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontWeight:600, fontSize:15, color:'#1e293b', marginBottom:2 }}>{customer.name}</div>
+                      <div style={{ fontSize:13, color:'#64748b' }}>{customer.domain}</div>
+                    </div>
+                    {/* Stats */}
+                    <div style={{ display:'flex', gap:20, alignItems:'center', flexShrink:0 }}>
+                      {[
+                        { label:'Åpnet',  val: statsFor(customer.domain).opened,    color:'#3b82f6' },
+                        { label:'Lukket', val: statsFor(customer.domain).closed,    color:'#f59e0b' },
+                        { label:'Sendt',  val: statsFor(customer.domain).submitted, color:'#10b981' },
+                        { label:'Leads',  val: lc,                                  color:'#8b5cf6' },
+                      ].map(s => (
+                        <div key={s.label} style={{ textAlign:'center', minWidth:42 }}>
+                          <div style={{ fontSize:18, fontWeight:700, color:s.color, lineHeight:1 }}>{s.val}</div>
+                          <div style={{ fontSize:10, color:'#94a3b8', marginTop:2 }}>{s.label}</div>
+                        </div>
+                      ))}
+                      {convRate(customer.domain) && (
+                        <div style={{ textAlign:'center', minWidth:48, background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:6, padding:'4px 8px' }}>
+                          <div style={{ fontSize:16, fontWeight:700, color:'#16a34a', lineHeight:1 }}>{convRate(customer.domain)}</div>
+                          <div style={{ fontSize:10, color:'#4ade80', marginTop:2 }}>konv.rate</div>
+                        </div>
+                      )}
+                      <div style={{ textAlign:'right', paddingLeft:8, borderLeft:'1px solid #e2e8f0' }}>
+                        <div style={{ fontSize:11, color:'#94a3b8' }}>Sist redigert</div>
+                        <div style={{ fontSize:12, color:'#475569', marginTop:1 }}>{fmtDate(customer.updatedAt)}</div>
+                      </div>
+                    </div>
+                    <div style={{ display:'flex', gap:8, flexShrink:0 }} onClick={e => e.stopPropagation()}>
+                      <button
+                        className="btn-secondary"
+                        onClick={() => handleCopyGTM(customer)}
+                        style={{ fontSize:12, padding:'6px 12px' }}
+                      >
+                        {copiedId === customer.id ? '✓ Kopiert!' : '</> GTM'}
+                      </button>
+                      <button
+                        className="btn-primary"
+                        onClick={() => onOpenBuilder(customer)}
+                        style={{ fontSize:12, padding:'6px 14px' }}
+                      >
+                        ✏️ Rediger
+                      </button>
+                      <button
+                        onClick={() => { if (window.confirm('Slett ' + customer.name + '?')) deleteCustomer(customer.id); }}
+                        style={{ background:'transparent', border:'1px solid #fca5a5', color:'#ef4444', borderRadius:6, padding:'6px 10px', cursor:'pointer', fontSize:12 }}
+                      >
+                        🗑
+                      </button>
+                    </div>
+                    {/* Ekspander-pil */}
+                    <div style={{ color:'#94a3b8', fontSize:14, marginLeft:4, transition:'transform .2s', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</div>
                   </div>
-                  <div style={{ display:'flex', gap:8, flexShrink:0 }}>
-                    <button
-                      className="btn-secondary"
-                      onClick={() => handleCopyGTM(customer)}
-                      style={{ fontSize:12, padding:'6px 12px' }}
-                    >
-                      {copiedId === customer.id ? '✓ Kopiert!' : '</> GTM'}
-                    </button>
-                    <button
-                      className="btn-primary"
-                      onClick={() => onOpenBuilder(customer)}
-                      style={{ fontSize:12, padding:'6px 14px' }}
-                    >
-                      ✏️ Rediger
-                    </button>
-                    <button
-                      onClick={() => { if (window.confirm('Slett ' + customer.name + '?')) deleteCustomer(customer.id); }}
-                      style={{ background:'transparent', border:'1px solid #fca5a5', color:'#ef4444', borderRadius:6, padding:'6px 10px', cursor:'pointer', fontSize:12 }}
-                    >
-                      🗑
-                    </button>
-                  </div>
+                  {/* Detalj-panel */}
+                  {isExpanded && (
+                    <CustomerDetailPanel
+                      customer={customer}
+                      onClose={() => setExpandedId(null)}
+                    />
+                  )}
                 </div>
               );
             })}
