@@ -738,22 +738,74 @@ const EMPTY_CONFIG = {
 };
 
 function useCustomers() {
-  const [customers, setCustomers] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('lp_customers') || '[]'); }
-    catch { return []; }
-  });
-  const save = (list) => { setCustomers(list); localStorage.setItem('lp_customers', JSON.stringify(list)); };
-  const addCustomer = (name, domain) => {
-    const nc = { id: Date.now().toString(), name, domain, config: { ...EMPTY_CONFIG, clientId: domain }, updatedAt: new Date().toISOString() };
-    save([...customers, nc]);
-    return nc;
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const HEADERS = {
+    apikey: SUPABASE_KEY,
+    Authorization: 'Bearer ' + SUPABASE_KEY,
+    'Content-Type': 'application/json',
+    Prefer: 'return=representation',
   };
-  const updateCustomer = (id, config) => {
-    const list = customers.map(c => c.id === id ? { ...c, config, updatedAt: new Date().toISOString() } : c);
-    save(list);
+
+  // Last inn kunder fra Supabase ved oppstart
+  useEffect(() => {
+    fetch(SUPABASE_URL + '/rest/v1/customers?order=created_at.asc', { headers: HEADERS })
+      .then(r => r.json())
+      .then(rows => {
+        // Konverter fra Supabase-format til lokalt format
+        const mapped = rows.map(r => ({
+          id: r.id,
+          name: r.name,
+          domain: r.domain,
+          config: r.config || {},
+          updatedAt: r.updated_at,
+        }));
+        setCustomers(mapped);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const addCustomer = async (name, domain) => {
+    const nc = {
+      id: Date.now().toString(),
+      name,
+      domain,
+      config: { ...EMPTY_CONFIG, clientId: domain },
+      updated_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+    };
+    const res = await fetch(SUPABASE_URL + '/rest/v1/customers', {
+      method: 'POST',
+      headers: HEADERS,
+      body: JSON.stringify(nc),
+    });
+    if (res.ok) {
+      const [saved] = await res.json();
+      setCustomers(c => [...c, { id: saved.id, name: saved.name, domain: saved.domain, config: saved.config || {}, updatedAt: saved.updated_at }]);
+    }
   };
-  const deleteCustomer = (id) => save(customers.filter(c => c.id !== id));
-  return { customers, addCustomer, updateCustomer, deleteCustomer };
+
+  const updateCustomer = async (id, config) => {
+    const updated_at = new Date().toISOString();
+    await fetch(SUPABASE_URL + '/rest/v1/customers?id=eq.' + id, {
+      method: 'PATCH',
+      headers: HEADERS,
+      body: JSON.stringify({ config, updated_at }),
+    });
+    setCustomers(c => c.map(x => x.id === id ? { ...x, config, updatedAt: updated_at } : x));
+  };
+
+  const deleteCustomer = async (id) => {
+    await fetch(SUPABASE_URL + '/rest/v1/customers?id=eq.' + id, {
+      method: 'DELETE',
+      headers: HEADERS,
+    });
+    setCustomers(c => c.filter(x => x.id !== id));
+  };
+
+  return { customers, loading, addCustomer, updateCustomer, deleteCustomer };
 }
 
 function CustomerPanel({ onOpenBuilder, customers, addCustomer, deleteCustomer }) {
