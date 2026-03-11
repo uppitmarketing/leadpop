@@ -1012,7 +1012,7 @@ const FIELD_OPTIONS = [
 ];
 
 function BuilderPanel({ customer, onSave, onBack }) {
-  const [config, setConfig] = useState(customer ? customer.config : DEFAULT_CONFIG);
+  const [config, setConfig] = useState(customer ? { ...EMPTY_CONFIG, ...customer.config } : DEFAULT_CONFIG);
   const [btab, setBtab] = useState('design');
   const [saveStatus, setSaveStatus] = useState(null);
   const saveTimer = useRef(null);
@@ -1021,7 +1021,7 @@ function BuilderPanel({ customer, onSave, onBack }) {
   // Synkroniser config når customer endres
   useEffect(() => {
     skipSave.current = true;
-    setConfig(customer ? { ...customer.config } : DEFAULT_CONFIG);
+    setConfig(customer ? { ...EMPTY_CONFIG, ...customer.config } : DEFAULT_CONFIG);
     setSaveStatus(null);
   }, [customer?.id]);
 
