@@ -214,4 +214,34 @@
     } else { LeadPop.show(); }
   }
 
+  
+// Auto-trigger: scroll + delay (styres via window.LeadPopConfig)
+(function() {
+  var scrollThreshold = cfg.scrollThreshold != null ? cfg.scrollThreshold : null;
+  var triggerDelay    = cfg.triggerDelay    != null ? cfg.triggerDelay * 1000 : 0;
+  var exitIntent      = cfg.exitIntent      === true;
+
+  if (scrollThreshold === null && !exitIntent) return; // GTM styrer manuelt
+
+  if (scrollThreshold !== null) {
+    function onScroll() {
+      var docH = document.body.scrollHeight - window.innerHeight;
+      if (docH <= 0) return;
+      var pct = (window.scrollY / docH) * 100;
+      if (pct >= scrollThreshold) {
+        window.removeEventListener('scroll', onScroll);
+        setTimeout(function() { LeadPop.show(); }, triggerDelay);
+      }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+  }
+
+  if (exitIntent) {
+    document.addEventListener('mouseleave', function onLeave(e) {
+      if (e.clientY <= 0) {
+        document.removeEventListener('mouseleave', onLeave);
+        LeadPop.show();
+      }
+    });
+  }
 })();
